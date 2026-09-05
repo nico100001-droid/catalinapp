@@ -1,51 +1,365 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Retro Arcade Web</title>
-    <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100vw;
-            height: 100vh;
-            background-color: #000;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        canvas {
-            width: 100vw !important;
-            height: 100vh !important;
-            object-fit: contain;
-            image-rendering: pixelated;
-        }
-    </style>
-    <!-- Librería Nostalgist (Soporte nativo WASM/RetroArch) -->
-    <script src="https://unpkg.com/nostalgist/dist/nostalgist.umd.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Gestión Pilates</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+<body class="bg-gray-100 font-sans text-gray-800">
 
-    <script>
-        async function launchGame() {
-            try {
-                // Para NES utiliza el núcleo 'fceumm'
-                // Para SNES cambia a 'snes9x'
-                // Para SEGA cambia a 'genesis_plus_gx'
-                await Nostalgist.launch({
-                    core: 'fceumm',
-                    rom: 'https://tomiaa12.github.io/nesRoms/nes/543.nes',
-                });
-            } catch (error) {
-                console.error("Error iniciando el emulador:", error);
-            }
+  <div id="app" class="max-w-4xl mx-auto p-4"></div>
+
+  <script>
+    // ESTADO INICIAL / BASE DE DATOS LOCAL
+    const DB_KEY = 'pilates_app_db';
+    
+    const initialData = {
+      adminPass: "123",
+      clients: [
+        { id: "1", name: "Juan Perez", pass: "456", activeMonth: "Septiembre 2026", dueDate: "2026-10-05", credits: 0 }
+      ],
+      // Generación de franjas horarias base
+      schedules: ["08:00", "09:00", "10:00", "11:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00"],
+      // Reservas: { "YYYY-MM-DD_HH:MM": ["clientId1", "clientId2"] }
+      bookings: {}
+    };
+
+    function getDB() {
+      const data = localStorage.getItem(DB_KEY);
+      if (!data) {
+        localStorage.setItem(DB_KEY, JSON.stringify(initialData));
+        return initialData;
+      }
+      return JSON.parse(data);
+    }
+
+    function saveDB(db) {
+      localStorage.setItem(DB_KEY, JSON.stringify(db));
+    }
+
+    // SESIÓN ACTUAL
+    let currentUser = null; // { role: 'admin' } | { role: 'client', data: clientObj }
+
+    // RENDER PRINCIPAL
+    function render() {
+      const container = document.getElementById('app');
+      container.innerHTML = '';
+
+      if (!currentUser) {
+        renderLogin(container);
+      } else if (currentUser.role === 'admin') {
+        renderAdminDashboard(container);
+      } else if (currentUser.role === 'client') {
+        renderClientDashboard(container);
+      }
+    }
+
+    // VISTA LOGIN
+    function renderLogin(container) {
+      container.innerHTML = `
+        <div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md mt-10">
+          <h1 class="text-2xl font-bold text-center mb-6 text-indigo-600">Acceso Pilates App</h1>
+          
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-1">Tipo de usuario</label>
+            <select id="loginType" class="w-full border p-2 rounded" onchange="toggleLoginInputs()">
+              <option value="client">Cliente</option>
+              <option value="admin">Administrador</option>
+            </select>
+          </div>
+
+          <div id="clientInputs">
+            <div class="mb-4">
+              <label class="block text-sm font-medium mb-1">Nombre y Apellido</label>
+              <input type="text" id="clientName" class="w-full border p-2 rounded" placeholder="ej. Juan Perez">
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm font-medium mb-1">Últimos 3 del DNI</label>
+              <input type="password" id="clientPass" maxlength="3" class="w-full border p-2 rounded" placeholder="456">
+            </div>
+          </div>
+
+          <div id="adminInputs" class="hidden">
+            <div class="mb-4">
+              <label class="block text-sm font-medium mb-1">Usuario Admin</label>
+              <input type="text" id="adminUser" class="w-full border p-2 rounded" value="admin">
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm font-medium mb-1">Clave (3 números)</label>
+              <input type="password" id="adminPass" maxlength="3" class="w-full border p-2 rounded" placeholder="123">
+            </div>
+          </div>
+
+          <button onclick="handleLogin()" class="w-full bg-indigo-600 text-white p-2 rounded hover:bg-indigo-700 font-bold">
+            Ingresar
+          </button>
+        </div>
+      `;
+    }
+
+    function toggleLoginInputs() {
+      const type = document.getElementById('loginType').value;
+      document.getElementById('clientInputs').classList.toggle('hidden', type === 'admin');
+      document.getElementById('adminInputs').classList.toggle('hidden', type === 'client');
+    }
+
+    function handleLogin() {
+      const db = getDB();
+      const type = document.getElementById('loginType').value;
+
+      if (type === 'admin') {
+        const u = document.getElementById('adminUser').value;
+        const p = document.getElementById('adminPass').value;
+        if (u === 'admin' && p === db.adminPass) {
+          currentUser = { role: 'admin' };
+          render();
+        } else {
+          alert('Credenciales de administrador incorrectas');
         }
+      } else {
+        const name = document.getElementById('clientName').value.trim();
+        const pass = document.getElementById('clientPass').value.trim();
+        const client = db.clients.find(c => c.name.toLowerCase() === name.toLowerCase() && c.pass === pass);
+        if (client) {
+          currentUser = { role: 'client', data: client };
+          render();
+        } else {
+          alert('Cliente no encontrado o datos incorrectos');
+        }
+      }
+    }
 
-        // Se ejecuta automáticamente al cargar el DOM
-        window.addEventListener('DOMContentLoaded', launchGame);
-    </script>
+    function logout() {
+      currentUser = null;
+      render();
+    }
 
+    // VISTA CLIENTE
+    function renderClientDashboard(container) {
+      const db = getDB();
+      const client = currentUser.data;
+
+      // Buscar reservas activas del cliente
+      const userBookings = [];
+      Object.keys(db.bookings).forEach(slotKey => {
+        if (db.bookings[slotKey].includes(client.id)) {
+          const [date, time] = slotKey.split('_');
+          userBookings.push({ slotKey, date, time });
+        }
+      });
+
+      container.innerHTML = `
+        <div class="bg-white p-4 rounded-lg shadow mb-6 flex justify-between items-center">
+          <div>
+            <h2 class="text-xl font-bold">${client.name}</h2>
+            <p class="text-sm text-gray-600">Mes activo: <span class="font-semibold text-green-600">${client.activeMonth}</span></p>
+            <p class="text-sm text-gray-600">Próximo vencimiento: <span class="font-semibold text-red-600">${client.dueDate}</span></p>
+            <p class="text-sm text-gray-600">Créditos de cancelación disponibles: <span class="font-semibold text-indigo-600">${client.credits}</span></p>
+          </div>
+          <button onclick="logout()" class="bg-gray-200 px-3 py-1 rounded text-sm">Cerrar Sesión</button>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg shadow mb-6">
+          <h3 class="font-bold text-lg mb-3">Tus Reservas</h3>
+          ${userBookings.length === 0 ? '<p class="text-gray-500">No tenés reservas activas.</p>' : ''}
+          <ul class="divide-y">
+            ${userBookings.map(b => `
+              <li class="py-2 flex justify-between items-center">
+                <span>Día: <strong>${b.date}</strong> - Hora: <strong>${b.time} hs</strong></span>
+                <button onclick="cancelBooking('${b.slotKey}')" class="bg-red-500 text-white px-2 py-1 rounded text-xs">Cancelar turno</button>
+              </li>
+            `).join('')}
+          </ul>
+        </div>
+
+        ${client.credits > 0 ? `
+          <div class="bg-white p-4 rounded-lg shadow">
+            <h3 class="font-bold text-lg mb-3 text-indigo-600">Seleccionar nueva cama (Uso de crédito)</h3>
+            <div class="mb-4">
+              <label class="block text-sm font-medium">Fecha:</label>
+              <input type="date" id="rebookDate" class="border p-2 rounded" onchange="renderAvailableSlots()">
+            </div>
+            <div id="availableSlots" class="grid grid-cols-2 gap-2"></div>
+          </div>
+        ` : ''}
+      `;
+    }
+
+    function cancelBooking(slotKey) {
+      const db = getDB();
+      const [dateStr, timeStr] = slotKey.split('_');
+      
+      // Validación de ventana de 2 horas
+      const bookingDateTime = new Date(`${dateStr}T${timeStr}:00`);
+      const now = new Date();
+      const diffHours = (bookingDateTime - now) / (1000 * 60 * 60);
+
+      if (diffHours < 2) {
+        alert('Las cancelaciones deben realizarse con al menos 2 horas de anticipación.');
+        return;
+      }
+
+      // Remover reserva
+      db.bookings[slotKey] = db.bookings[slotKey].filter(id => id !== currentUser.data.id);
+      
+      // Acreditar punto
+      const clientIdx = db.clients.findIndex(c => c.id === currentUser.data.id);
+      db.clients[clientIdx].credits += 1;
+      currentUser.data.credits += 1;
+
+      saveDB(db);
+      alert('Reserva cancelada. Se habilitó 1 crédito para reagendar.');
+      render();
+    }
+
+    function renderAvailableSlots() {
+      const date = document.getElementById('rebookDate').value;
+      const slotsContainer = document.getElementById('availableSlots');
+      if (!date) return;
+
+      const db = getDB();
+      slotsContainer.innerHTML = db.schedules.map(time => {
+        const slotKey = `${date}_${time}`;
+        const count = (db.bookings[slotKey] || []).length;
+        const disabled = count >= 6;
+
+        return `
+          <button 
+            onclick="bookCreditSlot('${slotKey}')" 
+            ${disabled ? 'disabled' : ''} 
+            class="p-2 text-sm rounded border text-center ${disabled ? 'bg-gray-100 text-gray-400' : 'bg-green-50 hover:bg-green-100 text-green-700 border-green-300'}">
+            ${time} hs (${count}/6 camas)
+          </button>
+        `;
+      }).join('');
+    }
+
+    function bookCreditSlot(slotKey) {
+      const db = getDB();
+      if (!db.bookings[slotKey]) db.bookings[slotKey] = [];
+
+      if (db.bookings[slotKey].length >= 6) {
+        alert('Franja sin camas disponibles.');
+        return;
+      }
+
+      db.bookings[slotKey].push(currentUser.data.id);
+      
+      const clientIdx = db.clients.findIndex(c => c.id === currentUser.data.id);
+      db.clients[clientIdx].credits -= 1;
+      currentUser.data.credits -= 1;
+
+      saveDB(db);
+      alert('Reserva realizada exitosamente.');
+      render();
+    }
+
+    // VISTA ADMINISTRADOR
+    function renderAdminDashboard(container) {
+      const db = getDB();
+
+      container.innerHTML = `
+        <div class="bg-white p-4 rounded-lg shadow mb-6 flex justify-between items-center">
+          <h2 class="text-xl font-bold text-indigo-700">Panel de Administración</h2>
+          <button onclick="logout()" class="bg-gray-200 px-3 py-1 rounded text-sm">Cerrar Sesión</button>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg shadow mb-6">
+          <h3 class="font-bold text-md mb-3">Alta de Cliente</h3>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
+            <input type="text" id="newClientName" placeholder="Nombre y Apellido" class="border p-2 rounded text-sm">
+            <input type="text" id="newClientPass" placeholder="Últimos 3 DNI" maxlength="3" class="border p-2 rounded text-sm">
+            <input type="text" id="newClientMonth" placeholder="Mes Activo (ej. Septiembre)" class="border p-2 rounded text-sm">
+            <input type="date" id="newClientDueDate" class="border p-2 rounded text-sm">
+          </div>
+          <button onclick="addClient()" class="mt-3 bg-indigo-600 text-white px-4 py-2 rounded text-sm font-bold">Cargar Cliente</button>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg shadow mb-6">
+          <h3 class="font-bold text-md mb-3">Estado de Clientes y Vencimientos</h3>
+          <ul class="divide-y text-sm">
+            ${db.clients.map(c => `
+              <li class="py-2 flex justify-between items-center">
+                <span><strong>${c.name}</strong> (Pass: ${c.pass}) - Mes: ${c.activeMonth}</span>
+                <span class="text-xs ${new Date(c.dueDate) < new Date() ? 'text-red-600 font-bold' : 'text-gray-500'}">
+                  Vence: ${c.dueDate}
+                </span>
+              </li>
+            `).join('')}
+          </ul>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg shadow">
+          <h3 class="font-bold text-md mb-3">Asignar Cama a Cliente</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
+            <select id="adminSelectClient" class="border p-2 rounded text-sm">
+              ${db.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+            </select>
+            <input type="date" id="adminBookDate" class="border p-2 rounded text-sm">
+            <select id="adminSelectTime" class="border p-2 rounded text-sm">
+              ${db.schedules.map(s => `<option value="${s}">${s} hs</option>`).join('')}
+            </select>
+          </div>
+          <button onclick="adminBookSlot()" class="bg-green-600 text-white px-4 py-2 rounded text-sm font-bold">Asignar Cama</button>
+        </div>
+      `;
+    }
+
+    function addClient() {
+      const name = document.getElementById('newClientName').value.trim();
+      const pass = document.getElementById('newClientPass').value.trim();
+      const activeMonth = document.getElementById('newClientMonth').value.trim();
+      const dueDate = document.getElementById('newClientDueDate').value;
+
+      if (!name || pass.length !== 3 || !activeMonth || !dueDate) {
+        alert('Complete todos los campos de cliente correctamente.');
+        return;
+      }
+
+      const db = getDB();
+      db.clients.push({
+        id: Date.now().toString(),
+        name,
+        pass,
+        activeMonth,
+        dueDate,
+        credits: 0
+      });
+
+      saveDB(db);
+      alert('Cliente agregado con éxito');
+      render();
+    }
+
+    function adminBookSlot() {
+      const clientId = document.getElementById('adminSelectClient').value;
+      const date = document.getElementById('adminBookDate').value;
+      const time = document.getElementById('adminSelectTime').value;
+
+      if (!date) {
+        alert('Seleccione una fecha');
+        return;
+      }
+
+      const slotKey = `${date}_${time}`;
+      const db = getDB();
+
+      if (!db.bookings[slotKey]) db.bookings[slotKey] = [];
+
+      if (db.bookings[slotKey].length >= 6) {
+        alert('Atención: Esa franja ya alcanzó el máximo de 6 camas.');
+        return;
+      }
+
+      db.bookings[slotKey].push(clientId);
+      saveDB(db);
+      alert('Cama asignada correctamente.');
+      render();
+    }
+
+    // INICIALIZACIÓN
+    render();
+  </script>
 </body>
 </html>
