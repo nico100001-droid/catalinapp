@@ -295,11 +295,11 @@
             <form id="login-form">
                 <div class="form-group">
                     <label>Nombre y Apellido / Usuario</label>
-                    <input type="text" id="login-user" placeholder="Ej: Juan Perez o admin" required>
+                    <input type="text" id="login-user" placeholder="Ej: Juan Perez o admin" autocomplete="username" required>
                 </div>
                 <div class="form-group">
                     <label>Contraseña / Clave</label>
-                    <input type="password" id="login-pass" placeholder="Ingresa tu clave" required>
+                    <input type="password" id="login-pass" placeholder="Ingresa tu clave" autocomplete="current-password" required>
                 </div>
                 <button type="submit" class="btn btn-action btn-block">Ingresar</button>
             </form>
@@ -418,10 +418,14 @@
     </div>
 
     <script>
-        // CLIENTE SUPABASE (Reemplazar con credenciales reales)
+        // CLIENTE SUPABASE (Inicialización segura sin romper ejecución)
         const SUPABASE_URL = 'https://TU-PROYECTO.supabase.co';
         const SUPABASE_KEY = 'TU-ANON-KEY';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        let supabaseClient = null;
+
+        if (window.supabase && typeof window.supabase.createClient === 'function' && !SUPABASE_URL.includes('TU-PROYECTO')) {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        }
 
         const HORARIOS_LV = ["08:00", "09:00", "10:00", "11:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00"];
         const HORARIOS_SAB = ["09:00", "10:00", "11:00"];
@@ -442,7 +446,15 @@
 
         // SERVICIO DE ALMACENAMIENTO (Fallback LocalStorage + Supabase)
         const StorageService = {
-            getAlumnos: () => JSON.parse(localStorage.getItem('pilates_v6_alumnos')) || [{ id: 'cli-admin', numFicha: '0000', nombre: 'admin', pass: '123', role: 'admin' }],
+            getAlumnos: () => {
+                const data = JSON.parse(localStorage.getItem('pilates_v6_alumnos'));
+                if (!data || !Array.isArray(data) || data.length === 0) {
+                    const defaultAdmin = [{ id: 'cli-admin', numFicha: '0000', nombre: 'admin', pass: '123', role: 'admin' }];
+                    localStorage.setItem('pilates_v6_alumnos', JSON.stringify(defaultAdmin));
+                    return defaultAdmin;
+                }
+                return data;
+            },
             saveAlumnos: (data) => localStorage.setItem('pilates_v6_alumnos', JSON.stringify(data)),
             getCancelaciones: () => JSON.parse(localStorage.getItem('pilates_v6_cancelaciones')) || {},
             saveCancelaciones: (data) => localStorage.setItem('pilates_v6_cancelaciones', JSON.stringify(data)),
@@ -513,15 +525,15 @@
 
         function handleLogin(e) {
             e.preventDefault();
-            const userInput = document.getElementById('login-user').value.trim();
+            const userInput = document.getElementById('login-user').value.trim().toLowerCase();
             const passInput = document.getElementById('login-pass').value.trim();
 
             dbAlumnos = StorageService.getAlumnos();
 
-            if (userInput.toLowerCase() === 'admin' && passInput === '123') {
+            if (userInput === 'admin' && passInput === '123') {
                 currentUser = { id: 'cli-admin', numFicha: '0000', nombre: 'Administrador', role: 'admin' };
             } else {
-                const alumno = dbAlumnos.find(a => a.nombre.toLowerCase() === userInput.toLowerCase() && a.pass === passInput && a.role === 'alumno');
+                const alumno = dbAlumnos.find(a => a.nombre.toLowerCase() === userInput && a.pass === passInput && a.role === 'alumno');
                 if (alumno) {
                     currentUser = alumno;
                 } else {
