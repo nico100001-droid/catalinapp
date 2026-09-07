@@ -3,148 +3,498 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prueba de Conexión Supabase - Pilates</title>
-    <!-- Librería Oficial de Supabase vía CDN -->
+    <title>Gestión de Pilates - Panel de Alumnos</title>
+    <!-- SDK Oficial de Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f9; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        h1, h2 { color: #2c3e50; }
-        .form-group { margin-bottom: 12px; }
-        label { display: block; font-weight: bold; margin-bottom: 4px; }
-        input, select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
-        button { background-color: #27ae60; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; width: 100%; margin-top: 10px; }
-        button:hover { background-color: #219150; }
-        #status { margin-top: 15px; padding: 10px; border-radius: 4px; display: none; }
-        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        pre { background: #eee; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        :root {
+            --primary: #2c3e50;
+            --secondary: #34495e;
+            --accent: #27ae60;
+            --danger: #e74c3c;
+            --warning: #f39c12;
+            --bg: #f4f6f9;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg);
+            color: #333;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: var(--primary);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .week-navigator {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--card-bg);
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        .week-navigator button {
+            background: var(--secondary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .week-navigator button:hover {
+            background: var(--primary);
+        }
+
+        .week-title {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            font-size: 0.85em;
+            margin-bottom: 5px;
+            color: #555;
+        }
+
+        .form-group input, .form-group select {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 0.95em;
+        }
+
+        .btn-submit {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        .btn-submit:hover {
+            background: #219150;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            font-size: 0.9em;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            color: var(--primary);
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+            display: inline-block;
+        }
+
+        .badge-activo {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .badge-pendiente {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .btn-action {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1em;
+            margin-right: 5px;
+        }
+
+        .btn-edit { color: var(--warning); }
+        .btn-delete { color: var(--danger); }
+
+        #alert-box {
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+        @media (max-width: 600px) {
+            table, thead, tbody, th, td, tr { display: block; }
+            thead tr { position: absolute; top: -9999px; left: -9999px; }
+            tr { border: 1px solid #ccc; margin-bottom: 10px; border-radius: 8px; background: #fff; }
+            td { border: none; border-bottom: 1px solid #eee; position: relative; padding-left: 50%; }
+            td:before { position: absolute; top: 12px; left: 12px; width: 45%; padding-right: 10px; white-space: nowrap; font-weight: bold; }
+            td:nth-of-type(1):before { content: "Ficha / Alumno"; }
+            td:nth-of-type(2):before { content: "Celular"; }
+            td:nth-of-type(3):before { content: "Plan / Arancel"; }
+            td:nth-of-type(4):before { content: "Vencimiento"; }
+            td:nth-of-type(5):before { content: "Estado Semanal"; }
+            td:nth-of-type(6):before { content: "Acciones"; }
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Alta de Alumno (Prueba Supabase)</h1>
-    
-    <form id="alumnoForm">
-        <div class="form-group">
-            <label>N° Ficha / ID:</label>
-            <input type="text" id="num_ficha" value="001" required>
-        </div>
-        <div class="form-group">
-            <label>Nombre Completo:</label>
-            <input type="text" id="nombre" value="Nico Pérez" required>
-        </div>
-        <div class="form-group">
-            <label>Contraseña / PIN:</label>
-            <input type="text" id="pass" value="1234" required>
-        </div>
-        <div class="form-group">
-            <label>Número Celular:</label>
-            <input type="text" id="celular" value="+5491112345678" required>
-        </div>
-        <div class="form-group">
-            <label>Plan Elegido:</label>
-            <select id="plan">
-                <option value="1x semana">1x semana</option>
-                <option value="2x semana" selected>2x semana</option>
-                <option value="3x semana">3x semana</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>Monto Arancel ($):</label>
-            <input type="number" id="arancel" value="25000" required>
-        </div>
-        <div class="form-group">
-            <label>Descuento Aplicado:</label>
-            <select id="descuento">
-                <option value="false" selected>No</option>
-                <option value="true">Sí (10%)</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>Fecha Límite de Pago:</label>
-            <input type="date" id="fecha_pago" value="2026-09-30" required>
-        </div>
-        
-        <button type="submit">Guardar en Supabase</button>
-    </form>
+    <header>
+        <h1>Control de Alumnos y Pagos</h1>
+    </header>
 
-    <div id="status"></div>
+    <div id="alert-box"></div>
 
-    <h2>Registros en la Base de Datos:</h2>
-    <button onclick="consultarAlumnos()" style="background-color: #2980b9;">Actualizar Lista</button>
-    <pre id="output">Cargando datos...</pre>
+    <!-- NAVEGADOR DE SEMANAS -->
+    <div class="week-navigator">
+        <button onclick="cambiarSemana(-1)">&larr; Semana Anterior</button>
+        <div class="week-title" id="week-display">Cargando semana...</div>
+        <button onclick="cambiarSemana(1)">Semana Siguiente &rarr;</button>
+    </div>
+
+    <!-- FORMULARIO DE ALTA Y EDICIÓN -->
+    <div class="card">
+        <h2 id="form-title">Registrar Nuevo Alumno</h2>
+        <form id="alumno-form">
+            <input type="hidden" id="alumno-id">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>N° Ficha:</label>
+                    <input type="text" id="num_ficha" required placeholder="001">
+                </div>
+                <div class="form-group">
+                    <label>Nombre Completo:</label>
+                    <input type="text" id="nombre" required placeholder="Nombre y Apellido">
+                </div>
+                <div class="form-group">
+                    <label>PIN / Contraseña:</label>
+                    <input type="text" id="pass" required value="1234">
+                </div>
+                <div class="form-group">
+                    <label>Celular (WhatsApp):</label>
+                    <input type="text" id="celular" required placeholder="+54911...">
+                </div>
+                <div class="form-group">
+                    <label>Plan:</label>
+                    <select id="plan">
+                        <option value="1x semana">1x semana</option>
+                        <option value="2x semana" selected>2x semana</option>
+                        <option value="3x semana">3x semana</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Arancel ($):</label>
+                    <input type="number" id="arancel" required placeholder="25000">
+                </div>
+                <div class="form-group">
+                    <label>Descuento 10%:</label>
+                    <select id="descuento">
+                        <option value="false">No</option>
+                        <option value="true">Sí</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Fecha Límite Pago:</label>
+                    <input type="date" id="fecha_pago" required>
+                </div>
+            </div>
+            <button type="submit" class="btn-submit" id="btn-save">Guardar Alumno</button>
+            <button type="button" class="btn-submit" id="btn-cancel" style="background:#7f8c8d; display:none;" onclick="resetFormulario()">Cancelar Edición</button>
+        </form>
+    </div>
+
+    <!-- LISTADO DE ALUMNOS -->
+    <div class="card">
+        <h2>Listado General</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Alumno</th>
+                    <th>Celular</th>
+                    <th>Plan / Monto</th>
+                    <th>Vencimiento Pago</th>
+                    <th>Estado en Semana</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tabla-alumnos">
+                <tr><td colspan="6">Cargando alumnos...</td></tr>
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <script>
-    // 1. CONFIGURACIÓN SUPABASE
+    // ==========================================
+    // 1. CONFIGURACIÓN E INICIALIZACIÓN SUPABASE
+    // ==========================================
     const SUPABASE_URL = 'https://bgrhwfutbmoktvdziamk.supabase.co';
-    // ATENCIÓN: Reemplazar el siguiente string por tu clave 'anon public' de Supabase (Project Settings > API)
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJncmh3ZnV0Ym1va3R2ZHppYW1rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3ODU4NTYsImV4cCI6MjEwNDM2MTg1Nn0.1EjgnUOR3IwUmf_veno-oQZ4pEHKhbKElW0-AId2VZg'; 
+    // Mantenemos la clave anon pública validada en el paso anterior
+    const SUPABASE_ANON_KEY = 'TU_ANON_PUBLIC_KEY_AQUI'; 
 
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // 2. FUNCIÓN PARA BUSCAR Y MOSTRAR REGISTROS
-    async function consultarAlumnos() {
-        const output = document.getElementById('output');
-        output.innerText = 'Consultando...';
+    // Estado local de la aplicación
+    let listaAlumnos = [];
+    let fechaLunesSemanaActual = obtenerLunesDeSemana(new Date());
+
+    // ==========================================
+    // 2. LÓGICA DE FECHAS Y NAVEGACIÓN
+    // ==========================================
+    function obtenerLunesDeSemana(d) {
+        const fecha = new Date(d);
+        const day = fecha.getDay();
+        const diff = fecha.getDate() - day + (day === 0 ? -6 : 1);
+        fecha.setDate(diff);
+        fecha.setHours(0, 0, 0, 0);
+        return fecha;
+    }
+
+    function actualizarHeaderSemana() {
+        const finSemana = new Date(fechaLunesSemanaActual);
+        finSemana.setDate(finSemana.getDate() + 6);
+
+        const opc = { day: 'numeric', month: 'short' };
+        const texto = `Semana del ${fechaLunesSemanaActual.toLocaleDateString('es-AR', opc)} al ${finSemana.toLocaleDateString('es-AR', opc)} (${fechaLunesSemanaActual.getFullYear()})`;
         
+        document.getElementById('week-display').innerText = texto;
+    }
+
+    function cambiarSemana(direccion) {
+        fechaLunesSemanaActual.setDate(fechaLunesSemanaActual.getDate() + (direccion * 7));
+        actualizarHeaderSemana();
+        renderizarTabla();
+    }
+
+    /**
+     * Compara la fecha de pago guardada contra el inicio de la semana visualizada.
+     */
+    function evaluarEstadoSemanal(fechaPagoStr) {
+        if (!fechaPagoStr) return 'PENDIENTE';
+
+        const [pAño, pMes, pDia] = fechaPagoStr.split('-').map(Number);
+        const limitePago = new Date(pAño, pMes - 1, pDia, 23, 59, 59);
+
+        // Si la semana navega más allá del día de vencimiento pagado, figura PENDIENTE
+        if (fechaLunesSemanaActual > limitePago) {
+            return 'PENDIENTE';
+        }
+        return 'ACTIVO';
+    }
+
+    // ==========================================
+    // 3. OPERACIONES DE BASE DE DATOS (CRUD)
+    // ==========================================
+    async function cargarAlumnos() {
         try {
             const { data, error } = await _supabase
                 .from('Alumnos')
-                .select('*');
+                .select('*')
+                .order('nombre', { ascending: true });
 
             if (error) throw error;
-            output.innerText = JSON.stringify(data, null, 2);
+            listaAlumnos = data || [];
+            renderizarTabla();
         } catch (err) {
-            output.innerText = 'Error al consultar: ' + err.message;
+            mostrarAlerta('Error al cargar alumnos: ' + err.message, 'error');
         }
     }
 
-    // 3. EVENTO DE ENVÍO DEL FORMULARIO (INSERT)
-    document.getElementById('alumnoForm').addEventListener('submit', async function(e) {
+    document.getElementById('alumno-form').addEventListener('submit', async function(e) {
         e.preventDefault();
-        
-        const statusDiv = document.getElementById('status');
-        statusDiv.style.display = 'none';
 
-        const nuevoAlumno = {
+        const id = document.getElementById('alumno-id').value;
+        const arancelBase = parseFloat(document.getElementById('arancel').value);
+        const aplicaDescuento = document.getElementById('descuento').value === 'true';
+        const arancelFinal = aplicaDescuento ? arancelBase * 0.9 : arancelBase;
+
+        const payload = {
             num_ficha: document.getElementById('num_ficha').value,
             nombre: document.getElementById('nombre').value,
             pass: document.getElementById('pass').value,
             celular: document.getElementById('celular').value,
             plan: document.getElementById('plan').value,
-            arancel: parseFloat(document.getElementById('arancel').value),
-            descuento: document.getElementById('descuento').value === 'true',
+            arancel: arancelFinal,
+            descuento: aplicaDescuento,
             fecha_pago: document.getElementById('fecha_pago').value,
             creditos_recupero: 0,
             turnos_fijos: []
         };
 
         try {
-            const { data, error } = await _supabase
-                .from('Alumnos')
-                .insert([nuevoAlumno])
-                .select();
+            if (id) {
+                // Modo Edición
+                const { error } = await _supabase
+                    .from('Alumnos')
+                    .update(payload)
+                    .eq('id', id);
 
-            if (error) throw error;
+                if (error) throw error;
+                mostrarAlerta('Alumno actualizado correctamente', 'success');
+            } else {
+                // Modo Alta
+                const { error } = await _supabase
+                    .from('Alumnos')
+                    .insert([payload]);
 
-            statusDiv.className = 'success';
-            statusDiv.innerText = '¡Alumno guardado con éxito en Supabase!';
-            statusDiv.style.display = 'block';
+                if (error) throw error;
+                mostrarAlerta('Alumno guardado exitosamente', 'success');
+            }
 
-            // Actualiza la lista visible
-            consultarAlumnos();
+            resetFormulario();
+            cargarAlumnos();
         } catch (err) {
-            statusDiv.className = 'error';
-            statusDiv.innerText = 'Error al guardar: ' + err.message;
-            statusDiv.style.display = 'block';
+            mostrarAlerta('Error al procesar la solicitud: ' + err.message, 'error');
         }
     });
 
-    // Carga inicial al abrir la página
-    consultarAlumnos();
+    async function eliminarAlumno(id) {
+        if (!confirm('¿Está seguro de que desea eliminar este alumno?')) return;
+
+        try {
+            const { error } = await _supabase
+                .from('Alumnos')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+            mostrarAlerta('Alumno eliminado', 'success');
+            cargarAlumnos();
+        } catch (err) {
+            mostrarAlerta('Error al eliminar: ' + err.message, 'error');
+        }
+    }
+
+    // ==========================================
+    // 4. INTERFAZ Y RENDERIZADO
+    // ==========================================
+    function renderizarTabla() {
+        const tbody = document.getElementById('tabla-alumnos');
+        tbody.innerHTML = '';
+
+        if (listaAlumnos.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6">No hay alumnos registrados.</td></tr>';
+            return;
+        }
+
+        listaAlumnos.forEach(a => {
+            const estado = evaluarEstadoSemanal(a.fecha_pago);
+            const badgeClass = estado === 'ACTIVO' ? 'badge-activo' : 'badge-pendiente';
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>[${a.num_ficha}]</strong> ${a.nombre}</td>
+                <td><a href="https://wa.me/${a.celular.replace(/[^0-9]/g, '')}" target="_blank" style="color:#27ae60; text-decoration:none;">${a.celular}</a></td>
+                <td>${a.plan} ($${a.arancel})</td>
+                <td>${a.fecha_pago || 'Sin fecha'}</td>
+                <td><span class="badge ${badgeClass}">${estado}</span></td>
+                <td>
+                    <button class="btn-action btn-edit" onclick="prepararEdicion('${a.id}')" title="Editar / Renovar Pago">✏️</button>
+                    <button class="btn-action btn-delete" onclick="eliminarAlumno('${a.id}')" title="Eliminar">🗑️</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function prepararEdicion(id) {
+        const alumno = listaAlumnos.find(a => a.id == id);
+        if (!alumno) return;
+
+        document.getElementById('alumno-id').value = alumno.id;
+        document.getElementById('num_ficha').value = alumno.num_ficha;
+        document.getElementById('nombre').value = alumno.nombre;
+        document.getElementById('pass').value = alumno.pass;
+        document.getElementById('celular').value = alumno.celular;
+        document.getElementById('plan').value = alumno.plan;
+        document.getElementById('arancel').value = alumno.arancel;
+        document.getElementById('descuento').value = alumno.descuento ? 'true' : 'false';
+        document.getElementById('fecha_pago').value = alumno.fecha_pago;
+
+        document.getElementById('form-title').innerText = 'Editar / Renovar Pago de Alumno';
+        document.getElementById('btn-save').innerText = 'Actualizar Datos';
+        document.getElementById('btn-cancel').style.display = 'block';
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetFormulario() {
+        document.getElementById('alumno-form').reset();
+        document.getElementById('alumno-id').value = '';
+        document.getElementById('form-title').innerText = 'Registrar Nuevo Alumno';
+        document.getElementById('btn-save').innerText = 'Guardar Alumno';
+        document.getElementById('btn-cancel').style.display = 'none';
+    }
+
+    function mostrarAlerta(mensaje, tipo) {
+        const alertBox = document.getElementById('alert-box');
+        alertBox.className = tipo === 'success' ? 'alert-success' : 'alert-error';
+        alertBox.innerText = mensaje;
+        alertBox.style.display = 'block';
+
+        setTimeout(() => {
+            alertBox.style.display = 'none';
+        }, 4000);
+    }
+
+    // Inicializar al cargar
+    actualizarHeaderSemana();
+    cargarAlumnos();
 </script>
 
 </body>
