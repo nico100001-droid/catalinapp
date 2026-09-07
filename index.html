@@ -104,26 +104,6 @@
         .badge-creditos { background: var(--warning); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; color: #1e1e24; }
         .badge-info { background: #2980b9; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
 
-        .nota-semanal-container {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex: 1;
-            max-width: 320px;
-        }
-
-        .nota-semanal-input {
-            width: 100%;
-            background: var(--cell-bg);
-            border: 1px solid var(--grid-border);
-            color: #f1c40f;
-            font-size: 0.8rem;
-            padding: 6px 10px;
-            border-radius: 6px;
-            resize: none;
-            height: 36px;
-        }
-
         .main-container { display: flex; gap: 15px; flex: 1; overflow: hidden; }
 
         .sidebar {
@@ -167,23 +147,6 @@
             padding: 2px;
         }
 
-        .btn-feriado-toggle {
-            font-size: 0.65rem;
-            background: transparent;
-            border: 1px solid var(--grid-border);
-            color: #aaa;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-top: 3px;
-            padding: 2px 4px;
-        }
-
-        .btn-feriado-toggle.active {
-            background: var(--feriado-border);
-            color: #fff;
-            border-color: var(--feriado-border);
-        }
-
         .grid-body { display: flex; flex-direction: column; overflow-y: auto; flex: 1; }
 
         .grid-row {
@@ -212,11 +175,6 @@
             flex-direction: column;
             gap: 4px;
             position: relative;
-        }
-
-        .slot-cell.feriado-col {
-            background-color: var(--feriado-bg) !important;
-            opacity: 0.6;
         }
 
         .slot-info { font-size: 0.7rem; color: #8a8a93; text-align: center; font-weight: bold; margin-top: 2px; }
@@ -295,31 +253,13 @@
             <form id="login-form">
                 <div class="form-group">
                     <label>Nombre y Apellido / Usuario</label>
-                    <input type="text" id="login-user" placeholder="Ej: Juan Perez o admin" autocomplete="username" required>
+                    <input type="text" id="login-user" placeholder="Ej: juan perez o admin" autocomplete="username" required>
                 </div>
                 <div class="form-group">
-                    <label>Contraseña / Clave</label>
+                    <label>Contraseña / Clave (3 dígitos)</label>
                     <input type="password" id="login-pass" placeholder="Ingresa tu clave" autocomplete="current-password" required>
                 </div>
                 <button type="submit" class="btn btn-action btn-block">Ingresar</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODAL TARIFAS -->
-    <div id="tarifas-modal" class="login-overlay hidden">
-        <div class="login-card">
-            <h2>Configurar Tarifas</h2>
-            <form id="tarifas-form">
-                <div class="form-group"><label>1 Clase/sem ($)</label><input type="number" id="tarifa-1" required></div>
-                <div class="form-group"><label>2 Clases/sem ($)</label><input type="number" id="tarifa-2" required></div>
-                <div class="form-group"><label>3 Clases/sem ($)</label><input type="number" id="tarifa-3" required></div>
-                <div class="form-group"><label>4 Clases/sem ($)</label><input type="number" id="tarifa-4" required></div>
-                <div class="form-group"><label>5 Clases/sem ($)</label><input type="number" id="tarifa-5" required></div>
-                <div style="display:flex; gap:6px;">
-                    <button type="submit" class="btn btn-action btn-block">Guardar</button>
-                    <button type="button" class="btn btn-danger btn-block" onclick="cerrarTarifasModal()">Cerrar</button>
-                </div>
             </form>
         </div>
     </div>
@@ -341,11 +281,6 @@
             <button class="btn" id="btn-next-week">Sig ▶</button>
         </div>
 
-        <div id="admin-tools-header" class="nota-semanal-container hidden">
-            <textarea id="nota-semanal-text" class="nota-semanal-input" placeholder="Nota semanal (Memoria)..."></textarea>
-            <button class="btn btn-warning" onclick="abrirTarifasModal()" style="font-size:0.7rem; padding:6px 8px;">Tarifas</button>
-        </div>
-
         <button class="btn btn-danger" id="btn-logout">Cerrar Sesión</button>
     </div>
 
@@ -359,19 +294,19 @@
             <form id="form-alta-alumno">
                 <input type="hidden" id="admin-cli-id">
                 <div class="form-group">
-                    <label>Nombre y Apellido</label>
-                    <input type="text" id="admin-cli-nombre" placeholder="Ej: Juan Perez" required>
+                    <label>Nombre y Apellido (Minúsculas)</label>
+                    <input type="text" id="admin-cli-nombre" placeholder="Ej: juan perez" required>
                 </div>
                 <div class="form-group">
                     <label>Número Celular</label>
                     <input type="tel" id="admin-cli-celular" placeholder="Ej: 1123456789">
                 </div>
                 <div class="form-group">
-                    <label>Clave de Acceso</label>
-                    <input type="text" id="admin-cli-pass" placeholder="Ej: 456" required>
+                    <label>Clave Acceso (Últimos 3 del DNI)</label>
+                    <input type="text" id="admin-cli-pass" maxlength="3" placeholder="Ej: 456" required>
                 </div>
                 <div class="form-group">
-                    <label>Fecha Último Pago</label>
+                    <label>Fecha de Pago</label>
                     <input type="date" id="admin-cli-fecha-pago" required>
                 </div>
 
@@ -404,12 +339,12 @@
         <div class="pizarra-container">
             <div class="grid-header">
                 <div>Hora</div>
-                <div class="header-day">Lun <span id="h-0"></span><button id="btn-feriado-0" class="btn-feriado-toggle hidden" onclick="toggleFeriado(0)">Feriado</button></div>
-                <div class="header-day">Mar <span id="h-1"></span><button id="btn-feriado-1" class="btn-feriado-toggle hidden" onclick="toggleFeriado(1)">Feriado</button></div>
-                <div class="header-day">Mié <span id="h-2"></span><button id="btn-feriado-2" class="btn-feriado-toggle hidden" onclick="toggleFeriado(2)">Feriado</button></div>
-                <div class="header-day">Jue <span id="h-3"></span><button id="btn-feriado-3" class="btn-feriado-toggle hidden" onclick="toggleFeriado(3)">Feriado</button></div>
-                <div class="header-day">Vie <span id="h-4"></span><button id="btn-feriado-4" class="btn-feriado-toggle hidden" onclick="toggleFeriado(4)">Feriado</button></div>
-                <div class="header-day">Sáb <span id="h-5"></span><button id="btn-feriado-5" class="btn-feriado-toggle hidden" onclick="toggleFeriado(5)">Feriado</button></div>
+                <div class="header-day">Lun <span id="h-0"></span></div>
+                <div class="header-day">Mar <span id="h-1"></span></div>
+                <div class="header-day">Mié <span id="h-2"></span></div>
+                <div class="header-day">Jue <span id="h-3"></span></div>
+                <div class="header-day">Vie <span id="h-4"></span></div>
+                <div class="header-day">Sáb <span id="h-5"></span></div>
             </div>
 
             <div class="grid-body" id="grid-body"></div>
@@ -418,14 +353,11 @@
     </div>
 
     <script>
-        // CLIENTE SUPABASE (Inicialización segura sin romper ejecución)
+        // CONFIGURACIÓN DE SUPABASE
         const SUPABASE_URL = 'https://TU-PROYECTO.supabase.co';
         const SUPABASE_KEY = 'TU-ANON-KEY';
-        let supabaseClient = null;
-
-        if (window.supabase && typeof window.supabase.createClient === 'function' && !SUPABASE_URL.includes('TU-PROYECTO')) {
-            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        }
+        
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         const HORARIOS_LV = ["08:00", "09:00", "10:00", "11:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00"];
         const HORARIOS_SAB = ["09:00", "10:00", "11:00"];
@@ -435,54 +367,17 @@
         const TARIFAS_DEFAULT = { 1: 30000, 2: 35000, 3: 40000, 4: 45000, 5: 50000 };
 
         let dbAlumnos = [];
-        let dbCancelaciones = {};
-        let dbRecuperos = {};
-        let dbNotas = {};
-        let dbFeriados = {};
-        let dbTarifas = {};
-
+        let dbHistorial = [];
         let currentUser = null;
         let fechaReferencia = new Date();
 
-        // SERVICIO DE ALMACENAMIENTO (Fallback LocalStorage + Supabase)
-        const StorageService = {
-            getAlumnos: () => {
-                const data = JSON.parse(localStorage.getItem('pilates_v6_alumnos'));
-                if (!data || !Array.isArray(data) || data.length === 0) {
-                    const defaultAdmin = [{ id: 'cli-admin', numFicha: '0000', nombre: 'admin', pass: '123', role: 'admin' }];
-                    localStorage.setItem('pilates_v6_alumnos', JSON.stringify(defaultAdmin));
-                    return defaultAdmin;
-                }
-                return data;
-            },
-            saveAlumnos: (data) => localStorage.setItem('pilates_v6_alumnos', JSON.stringify(data)),
-            getCancelaciones: () => JSON.parse(localStorage.getItem('pilates_v6_cancelaciones')) || {},
-            saveCancelaciones: (data) => localStorage.setItem('pilates_v6_cancelaciones', JSON.stringify(data)),
-            getRecuperos: () => JSON.parse(localStorage.getItem('pilates_v6_recuperos')) || {},
-            saveRecuperos: (data) => localStorage.setItem('pilates_v6_recuperos', JSON.stringify(data)),
-            getNotas: () => JSON.parse(localStorage.getItem('pilates_v6_notas')) || {},
-            saveNotas: (data) => localStorage.setItem('pilates_v6_notas', JSON.stringify(data)),
-            getFeriados: () => JSON.parse(localStorage.getItem('pilates_v6_feriados')) || {},
-            saveFeriados: (data) => localStorage.setItem('pilates_v6_feriados', JSON.stringify(data)),
-            getTarifas: () => JSON.parse(localStorage.getItem('pilates_v6_tarifas')) || TARIFAS_DEFAULT,
-            saveTarifas: (data) => localStorage.setItem('pilates_v6_tarifas', JSON.stringify(data)),
-            getSecuenciaFicha: () => parseInt(localStorage.getItem('pilates_v6_secuencia_ficha') || '1', 10),
-            incrementarSecuenciaFicha: () => {
-                let actual = StorageService.getSecuenciaFicha();
-                localStorage.setItem('pilates_v6_secuencia_ficha', (actual + 1).toString());
-                return actual;
-            }
-        };
-
-        // EVENT LISTENERS
+        // LISTENERS DE INTERFAZ
         document.getElementById('login-form').addEventListener('submit', handleLogin);
         document.getElementById('btn-logout').addEventListener('click', handleLogout);
         document.getElementById('form-alta-alumno').addEventListener('submit', handleGuardarAlumno);
         document.getElementById('btn-add-horario').addEventListener('click', () => { addHorarioSelector(); calcularCuotaFormulario(); });
         document.getElementById('btn-prev-week').addEventListener('click', () => cambiarSemana(-7));
         document.getElementById('btn-next-week').addEventListener('click', () => cambiarSemana(7));
-        document.getElementById('nota-semanal-text').addEventListener('input', handleGuardarNota);
-        document.getElementById('tarifas-form').addEventListener('submit', handleGuardarTarifas);
         document.getElementById('admin-cli-descuento').addEventListener('change', calcularCuotaFormulario);
 
         addHorarioSelector();
@@ -505,45 +400,52 @@
         }
 
         function calcularCuotaFormulario() {
-            dbTarifas = StorageService.getTarifas();
             const cantidadClases = document.querySelectorAll('.horario-row').length;
             const tieneDescuento = document.getElementById('admin-cli-descuento').checked;
             
-            let base = dbTarifas[Math.min(Math.max(cantidadClases, 1), 5)] || 0;
+            let base = TARIFAS_DEFAULT[Math.min(Math.max(cantidadClases, 1), 5)] || 0;
             if (tieneDescuento) base = base * 0.90;
 
             document.getElementById('calculo-cuota-text').textContent = `$${base.toLocaleString('es-AR')} (${cantidadClases} clase/s por sem)`;
             return base;
         }
 
-        function calcularEstadoPagoAlumno(alumno, lunesSemanaVisualizada) {
-            if (!alumno || !alumno.fechaPago) return false;
-            const fechaPago = new Date(alumno.fechaPago + 'T00:00:00');
-            const finDeMesPagado = new Date(fechaPago.getFullYear(), fechaPago.getMonth() + 1, 0);
-            return lunesSemanaVisualizada <= finDeMesPagado;
-        }
-
-        function handleLogin(e) {
+        // LOGIN CONSULTANDO A SUPABASE
+        async function handleLogin(e) {
             e.preventDefault();
             const userInput = document.getElementById('login-user').value.trim().toLowerCase();
             const passInput = document.getElementById('login-pass').value.trim();
 
-            dbAlumnos = StorageService.getAlumnos();
+            // 1. Probar Login Admin
+            const { data: adminData } = await supabaseClient
+                .from('administradores')
+                .select('*')
+                .eq('usuario', userInput)
+                .eq('password', passInput);
 
-            if (userInput === 'admin' && passInput === '123') {
-                currentUser = { id: 'cli-admin', numFicha: '0000', nombre: 'Administrador', role: 'admin' };
-            } else {
-                const alumno = dbAlumnos.find(a => a.nombre.toLowerCase() === userInput && a.pass === passInput && a.role === 'alumno');
-                if (alumno) {
-                    currentUser = alumno;
-                } else {
-                    alert('Usuario o clave incorrectos.');
-                    return;
-                }
+            if (adminData && adminData.length > 0) {
+                currentUser = { id: adminData[0].id, nombre: 'Administrador', role: 'admin' };
+                document.getElementById('login-modal').classList.add('hidden');
+                await setupInterface();
+                return;
             }
 
+            // 2. Probar Login Alumno
+            const { data: alumnoData, error } = await supabaseClient
+                .from('alumnos')
+                .select('*')
+                .eq('nombre', userInput)
+                .eq('clave', passInput)
+                .eq('estado', 'activo');
+
+            if (error || !alumnoData || alumnoData.length === 0) {
+                alert('Usuario o clave incorrectos.');
+                return;
+            }
+
+            currentUser = { ...alumnoData[0], role: 'alumno' };
             document.getElementById('login-modal').classList.add('hidden');
-            setupInterface();
+            await setupInterface();
         }
 
         function handleLogout() {
@@ -552,76 +454,59 @@
             document.getElementById('login-form').reset();
         }
 
-        function setupInterface() {
+        async function setupInterface() {
             document.getElementById('display-username').textContent = currentUser.nombre;
             document.getElementById('display-role').textContent = currentUser.role === 'admin' ? 'ADMIN' : 'ALUMNO';
 
             if (currentUser.role === 'admin') {
                 document.getElementById('admin-sidebar').classList.remove('hidden');
-                document.getElementById('admin-tools-header').classList.remove('hidden');
                 document.getElementById('display-num-ficha').classList.add('hidden');
                 document.getElementById('display-payment').classList.add('hidden');
                 document.getElementById('display-arancel').classList.add('hidden');
                 document.getElementById('display-creditos').classList.add('hidden');
-                document.querySelectorAll('.btn-feriado-toggle').forEach(b => b.classList.remove('hidden'));
-                renderListaAlumnos();
             } else {
                 document.getElementById('admin-sidebar').classList.add('hidden');
-                document.getElementById('admin-tools-header').classList.add('hidden');
                 document.getElementById('display-num-ficha').classList.remove('hidden');
                 document.getElementById('display-payment').classList.remove('hidden');
                 document.getElementById('display-arancel').classList.remove('hidden');
                 document.getElementById('display-creditos').classList.remove('hidden');
-                document.querySelectorAll('.btn-feriado-toggle').forEach(b => b.classList.add('hidden'));
 
-                document.getElementById('display-num-ficha').textContent = `Ficha: ${currentUser.numFicha || '----'}`;
-                document.getElementById('display-arancel').textContent = `Cuota: $${(currentUser.arancel || 0).toLocaleString('es-AR')}`;
-
-                actualizarCreditosDisplay();
+                document.getElementById('display-num-ficha').textContent = `Ficha: ${currentUser.id}`;
+                document.getElementById('display-arancel').textContent = `Cuota: $${(currentUser.monto_abonado || 0).toLocaleString('es-AR')}`;
+                document.getElementById('display-creditos').textContent = `Clases para recuperar: ${currentUser.clases_a_recuperar || 0}`;
             }
 
+            await cargarDatosSupabase();
             renderGrid();
         }
 
-        function actualizarCreditosDisplay() {
-            if (!currentUser || currentUser.role === 'admin') return;
+        async function cargarDatosSupabase() {
+            // Cargar Alumnos Activos
+            const { data: alumnos } = await supabaseClient
+                .from('alumnos')
+                .select('*')
+                .eq('estado', 'activo');
+            dbAlumnos = alumnos || [];
 
-            dbAlumnos = StorageService.getAlumnos();
-            const alumnoActualizado = dbAlumnos.find(a => a.id === currentUser.id);
-            if (alumnoActualizado) currentUser = alumnoActualizado;
+            // Cargar Historial de clases
+            const { data: historial } = await supabaseClient
+                .from('historial_clases')
+                .select('*');
+            dbHistorial = historial || [];
 
-            const mesActual = new Date().getMonth();
-            if (currentUser.creditosRecupero > 0 && currentUser.mesCredito !== undefined && currentUser.mesCredito !== mesActual) {
-                currentUser.creditosRecupero = 0;
-                const idx = dbAlumnos.findIndex(a => a.id === currentUser.id);
-                if (idx !== -1) {
-                    dbAlumnos[idx] = currentUser;
-                    StorageService.saveAlumnos(dbAlumnos);
-                }
+            if (currentUser && currentUser.role === 'admin') {
+                renderListaAlumnos();
             }
-
-            const creditos = currentUser.creditosRecupero || 0;
-            document.getElementById('display-creditos').textContent = `Clases para recuperar: ${creditos}`;
         }
 
-        function handleGuardarAlumno(e) {
+        // GUARDA / EDITA EN SUPABASE
+        async function handleGuardarAlumno(e) {
             e.preventDefault();
             const id = document.getElementById('admin-cli-id').value;
-            const nombre = document.getElementById('admin-cli-nombre').value.trim();
+            const nombre = document.getElementById('admin-cli-nombre').value.trim().toLowerCase();
             const celular = document.getElementById('admin-cli-celular').value.trim();
-            const pass = document.getElementById('admin-cli-pass').value.trim();
+            const clave = document.getElementById('admin-cli-pass').value.trim();
             const fechaPago = document.getElementById('admin-cli-fecha-pago').value;
-            const tieneDescuento = document.getElementById('admin-cli-descuento').checked;
-
-            dbAlumnos = StorageService.getAlumnos();
-
-            if (!id) {
-                const existe = dbAlumnos.some(a => a.nombre.toLowerCase() === nombre.toLowerCase());
-                if (existe) {
-                    alert(`Error: Ya existe un alumno registrado como "${nombre}".`);
-                    return;
-                }
-            }
 
             const rows = document.querySelectorAll('.horario-row');
             const turnosFijos = [];
@@ -636,65 +521,69 @@
                 return;
             }
 
-            const arancel = calcularCuotaFormulario();
+            // Calcular próximo vencimiento (+1 mes)
+            const fOrigen = new Date(fechaPago + 'T00:00:00');
+            fOrigen.setMonth(fOrigen.getMonth() + 1);
+            const proximoVencimiento = fOrigen.toISOString().split('T')[0];
+
+            const monto = calcularCuotaFormulario();
+            const planSemanal = turnosFijos.length;
 
             if (id) {
-                const idx = dbAlumnos.findIndex(a => a.id === id);
-                if (idx !== -1) {
-                    dbAlumnos[idx].nombre = nombre;
-                    dbAlumnos[idx].celular = celular;
-                    dbAlumnos[idx].pass = pass;
-                    dbAlumnos[idx].fechaPago = fechaPago;
-                    dbAlumnos[idx].turnosFijos = turnosFijos;
-                    dbAlumnos[idx].descuento = tieneDescuento;
-                    dbAlumnos[idx].arancel = arancel;
-                }
-                alert(`Alumno ${nombre} actualizado correctamente.`);
-            } else {
-                const sec = StorageService.incrementarSecuenciaFicha();
-                const numFicha = sec.toString().padStart(4, '0');
+                // Actualizar
+                const { error } = await supabaseClient
+                    .from('alumnos')
+                    .update({
+                        nombre, celular, clave,
+                        fecha_pago: fechaPago,
+                        proximo_vencimiento: proximoVencimiento,
+                        monto_abonado: monto,
+                        plan_semanal: planSemanal,
+                        horarios_clases: turnosFijos
+                    })
+                    .eq('id', id);
 
-                const nuevo = {
-                    id: 'cli-' + Date.now(),
-                    numFicha,
-                    nombre,
-                    celular,
-                    pass,
-                    fechaPago,
-                    role: 'alumno',
-                    turnosFijos,
-                    descuento: tieneDescuento,
-                    arancel,
-                    creditosRecupero: 0,
-                    mesCredito: new Date().getMonth()
-                };
-                dbAlumnos.push(nuevo);
-                alert(`Alumno ${nombre} registrado con éxito. Ficha N°: ${numFicha}`);
+                if (error) alert("Error al actualizar: " + error.message);
+                else alert("Alumno actualizado con éxito.");
+            } else {
+                // Insertar
+                const { error } = await supabaseClient
+                    .from('alumnos')
+                    .insert([{
+                        nombre, celular, clave,
+                        fecha_pago: fechaPago,
+                        proximo_vencimiento: proximoVencimiento,
+                        monto_abonado: monto,
+                        plan_semanal: planSemanal,
+                        horarios_clases: turnosFijos,
+                        clases_a_recuperar: 0,
+                        estado: 'activo'
+                    }]);
+
+                if (error) alert("Error al registrar: " + error.message);
+                else alert("Alumno registrado en Supabase.");
             }
 
-            StorageService.saveAlumnos(dbAlumnos);
             resetFormularioAlumno();
-            renderListaAlumnos();
+            await cargarDatosSupabase();
             renderGrid();
         }
 
         function editarAlumno(id) {
-            dbAlumnos = StorageService.getAlumnos();
-            const alumno = dbAlumnos.find(a => a.id === id);
+            const alumno = dbAlumnos.find(a => a.id == id);
             if (!alumno) return;
 
-            document.getElementById('form-alta-title').textContent = `Editar Alumno (Ficha ${alumno.numFicha})`;
+            document.getElementById('form-alta-title').textContent = `Editar Alumno (Ficha ${alumno.id})`;
             document.getElementById('admin-cli-id').value = alumno.id;
             document.getElementById('admin-cli-nombre').value = alumno.nombre;
             document.getElementById('admin-cli-celular').value = alumno.celular || '';
-            document.getElementById('admin-cli-pass').value = alumno.pass;
-            document.getElementById('admin-cli-fecha-pago').value = alumno.fechaPago || '';
-            document.getElementById('admin-cli-descuento').checked = !!alumno.descuento;
+            document.getElementById('admin-cli-pass').value = alumno.clave;
+            document.getElementById('admin-cli-fecha-pago').value = alumno.fecha_pago || '';
 
             const container = document.getElementById('horarios-fijos-container');
             container.innerHTML = '';
-            if (alumno.turnosFijos && alumno.turnosFijos.length > 0) {
-                alumno.turnosFijos.forEach(tf => addHorarioSelector(tf.dia, tf.hora));
+            if (alumno.horarios_clases && alumno.horarios_clases.length > 0) {
+                alumno.horarios_clases.forEach(tf => addHorarioSelector(tf.dia, tf.hora));
             } else {
                 addHorarioSelector();
             }
@@ -719,89 +608,39 @@
         function renderListaAlumnos() {
             const container = document.getElementById('lista-alumnos');
             container.innerHTML = '';
-            
-            dbAlumnos = StorageService.getAlumnos();
-            const lunesSemanaActual = getLunesDeSemana(fechaReferencia);
-            
-            dbAlumnos.filter(a => a.role === 'alumno').forEach(a => {
+
+            dbAlumnos.forEach(a => {
                 const card = document.createElement('div');
                 card.className = 'alumno-card';
                 
-                let resumenFijos = a.turnosFijos ? a.turnosFijos.map(tf => `${DIAS_NOMBRES[tf.dia].slice(0,3)} ${tf.hora}`).join(', ') : 'Sin turnos';
-                const esPago = calcularEstadoPagoAlumno(a, lunesSemanaActual);
+                let resumenFijos = a.horarios_clases ? a.horarios_clases.map(tf => `${DIAS_NOMBRES[tf.dia].slice(0,3)} ${tf.hora}`).join(', ') : 'Sin turnos';
+                const esPago = new Date(a.proximo_vencimiento) >= new Date();
 
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <strong>N° ${a.numFicha || '----'} - ${a.nombre}</strong>
+                        <strong>Ficha N° ${a.id} - ${a.nombre}</strong>
                         <span class="badge-status ${esPago ? '' : 'inactive'}" style="font-size:0.65rem;">
-                            ${esPago ? 'PAGO ACTIVO' : 'PAGO PENDIENTE'}
+                            ${esPago ? 'AL DÍA' : 'VENCIDO'}
                         </span>
                     </div>
-                    <span style="color:#aaa;">Cel: ${a.celular || 'S/N'} | Clave: ${a.pass}</span><br>
+                    <span style="color:#aaa;">Cel: ${a.celular || 'S/N'} | Clave: ${a.clave}</span><br>
                     <span style="color:#aaa;">Fijos: ${resumenFijos}</span><br>
-                    <span style="color:#8a8a93;">Cuota: $${(a.arancel || 0).toLocaleString('es-AR')} ${a.descuento ? '(10% Off)' : ''}</span> | 
-                    <span style="color:#f39c12; font-weight:bold;">Recuperos: ${a.creditosRecupero || 0}</span>
+                    <span style="color:#8a8a93;">Cuota: $${(a.monto_abonado || 0).toLocaleString('es-AR')}</span> | 
+                    <span style="color:#f39c12; font-weight:bold;">Recuperos: ${a.clases_a_recuperar || 0}</span>
                     <div class="alumno-actions">
                         <button class="btn btn-warning" style="padding:2px 6px; font-size:0.65rem;" onclick="editarAlumno('${a.id}')">Editar</button>
-                        <button class="btn btn-danger" style="padding:2px 6px; font-size:0.65rem;" onclick="eliminarAlumno('${a.id}')">Eliminar</button>
+                        <button class="btn btn-danger" style="padding:2px 6px; font-size:0.65rem;" onclick="darDeBajaAlumno('${a.id}')">Baja</button>
                     </div>
                 `;
                 container.appendChild(card);
             });
         }
 
-        function eliminarAlumno(id) {
-            if (!confirm("¿Eliminar este alumno y sus registros asociados?")) return;
-            dbAlumnos = StorageService.getAlumnos().filter(a => a.id !== id);
-            StorageService.saveAlumnos(dbAlumnos);
-            renderListaAlumnos();
+        async function darDeBajaAlumno(id) {
+            if (!confirm("¿Dar de baja a este alumno?")) return;
+            await supabaseClient.from('alumnos').update({ estado: 'inactivo' }).eq('id', id);
+            await cargarDatosSupabase();
             renderGrid();
-        }
-
-        function abrirTarifasModal() {
-            dbTarifas = StorageService.getTarifas();
-            document.getElementById('tarifa-1').value = dbTarifas[1] || 30000;
-            document.getElementById('tarifa-2').value = dbTarifas[2] || 35000;
-            document.getElementById('tarifa-3').value = dbTarifas[3] || 40000;
-            document.getElementById('tarifa-4').value = dbTarifas[4] || 45000;
-            document.getElementById('tarifa-5').value = dbTarifas[5] || 50000;
-            document.getElementById('tarifas-modal').classList.remove('hidden');
-        }
-
-        function cerrarTarifasModal() {
-            document.getElementById('tarifas-modal').classList.add('hidden');
-        }
-
-        function handleGuardarTarifas(e) {
-            e.preventDefault();
-            dbTarifas = {
-                1: parseInt(document.getElementById('tarifa-1').value, 10),
-                2: parseInt(document.getElementById('tarifa-2').value, 10),
-                3: parseInt(document.getElementById('tarifa-3').value, 10),
-                4: parseInt(document.getElementById('tarifa-4').value, 10),
-                5: parseInt(document.getElementById('tarifa-5').value, 10)
-            };
-            StorageService.saveTarifas(dbTarifas);
-            cerrarTarifasModal();
-            calcularCuotaFormulario();
-            alert("Tarifas actualizadas correctamente.");
-        }
-
-        function getSemanaKey(fecha) {
-            const d = new Date(Date.UTC(fecha.getFullYear(), fecha.getMonth(), fecha.getDate()));
-            const dayNum = d.getUTCDay() || 7;
-            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-            const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-            return `${d.getUTCFullYear()}-W${weekNo}`;
-        }
-
-        function getNumeroSemana(fecha) {
-            const d = new Date(Date.UTC(fecha.getFullYear(), fecha.getMonth(), fecha.getDate()));
-            const dayNum = d.getUTCDay() || 7;
-            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-            return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
         }
 
         function cambiarSemana(dias) {
@@ -817,66 +656,20 @@
             return new Date(d.setDate(diff));
         }
 
-        function handleGuardarNota() {
-            const semanaKey = getSemanaKey(fechaReferencia);
-            dbNotas[semanaKey] = document.getElementById('nota-semanal-text').value;
-            StorageService.saveNotas(dbNotas);
-        }
-
-        function toggleFeriado(diaIndex) {
-            const semanaKey = getSemanaKey(fechaReferencia);
-            if (!dbFeriados[semanaKey]) dbFeriados[semanaKey] = {};
-            dbFeriados[semanaKey][diaIndex] = !dbFeriados[semanaKey][diaIndex];
-            StorageService.saveFeriados(dbFeriados);
-            renderGrid();
-        }
-
         function renderGrid() {
             const gridBody = document.getElementById('grid-body');
             gridBody.innerHTML = '';
 
-            dbCancelaciones = StorageService.getCancelaciones();
-            dbRecuperos = StorageService.getRecuperos();
-            dbAlumnos = StorageService.getAlumnos();
-            dbNotas = StorageService.getNotas();
-            dbFeriados = StorageService.getFeriados();
-
             const lunesActual = getLunesDeSemana(fechaReferencia);
-            const semanaKey = getSemanaKey(fechaReferencia);
-            const numSemana = getNumeroSemana(fechaReferencia);
             const mesNombre = MESES_ABREV[lunesActual.getMonth()];
             const anio = lunesActual.getFullYear();
 
-            document.getElementById('semana-label').textContent = `Semana ${numSemana} - ${mesNombre} ${anio}`;
-            document.getElementById('nota-semanal-text').value = dbNotas[semanaKey] || '';
-
-            if (currentUser && currentUser.role === 'alumno') {
-                const aActual = dbAlumnos.find(a => a.id === currentUser.id);
-                if (aActual) currentUser = aActual;
-
-                const pagoActivoSemana = calcularEstadoPagoAlumno(currentUser, lunesActual);
-                const displayPayment = document.getElementById('display-payment');
-                displayPayment.textContent = pagoActivoSemana ? 'PAGO ACTIVO' : 'PAGO PENDIENTE';
-                displayPayment.className = `badge-status ${pagoActivoSemana ? '' : 'inactive'}`;
-            }
-
-            const feriadosSemana = dbFeriados[semanaKey] || {};
+            document.getElementById('semana-label').textContent = `${mesNombre} ${anio}`;
 
             for (let i = 0; i < 6; i++) {
                 const d = new Date(lunesActual);
                 d.setDate(d.getDate() + i);
                 document.getElementById(`h-${i}`).textContent = `${d.getDate()}/${d.getMonth()+1}`;
-                
-                const btnFer = document.getElementById(`btn-feriado-${i}`);
-                if (btnFer) {
-                    if (feriadosSemana[i]) {
-                        btnFer.classList.add('active');
-                        btnFer.textContent = "Feriado ✔";
-                    } else {
-                        btnFer.classList.remove('active');
-                        btnFer.textContent = "Feriado";
-                    }
-                }
             }
 
             HORARIOS_LV.forEach(hora => {
@@ -892,23 +685,23 @@
                     const slotCell = document.createElement('div');
                     slotCell.className = 'slot-cell';
 
-                    if (feriadosSemana[dia]) {
-                        slotCell.classList.add('feriado-col');
-                    }
-
                     if (dia === 5 && !HORARIOS_SAB.includes(hora)) {
                         slotCell.classList.add('disabled-slot');
                         row.appendChild(slotCell);
                         continue;
                     }
 
+                    const fechaCelda = new Date(lunesActual);
+                    fechaCelda.setDate(fechaCelda.getDate() + dia);
+                    const fechaIso = fechaCelda.toISOString().split('T')[0];
+
                     const slotKey = `${hora}-d${dia}`;
-                    const ocupantes = getOcupantesSlot(semanaKey, slotKey);
+                    const ocupantes = getOcupantesSlot(slotKey, fechaIso);
                     const disponibles = CAMAS_MAX - ocupantes.length;
 
                     const info = document.createElement('div');
                     info.className = 'slot-info';
-                    info.textContent = feriadosSemana[dia] ? 'FERIADO' : `${disponibles} de ${CAMAS_MAX} Libres`;
+                    info.textContent = `${disponibles} de ${CAMAS_MAX} Libres`;
                     slotCell.appendChild(info);
 
                     ocupantes.forEach(cli => {
@@ -917,17 +710,14 @@
                         if (currentUser && currentUser.role === 'admin') {
                             const ficha = document.createElement('div');
                             ficha.className = 'ficha';
-                            ficha.innerHTML = `<span>${cli.numFicha || ''} ${cli.nombre}</span>`;
-                            ficha.title = "Admin: Haz clic para cancelar este turno";
-                            ficha.style.cursor = "pointer";
-                            ficha.onclick = () => adminRemoverOcupante(semanaKey, slotKey, cli.id);
+                            ficha.innerHTML = `<span>Ficha ${cli.id} ${cli.nombre}</span>`;
+                            ficha.onclick = () => cancelarClaseModal(cli, fechaIso, true);
                             slotCell.appendChild(ficha);
                         } else if (esMio) {
                             const ficha = document.createElement('div');
                             ficha.className = 'ficha propia';
                             ficha.innerHTML = `<span>Tu Clase</span>`;
-                            ficha.title = "Haz clic para cancelar esta clase";
-                            ficha.onclick = () => alumnoCancelarClase(semanaKey, slotKey, dia, hora);
+                            ficha.onclick = () => cancelarClaseModal(cli, fechaIso, false);
                             slotCell.appendChild(ficha);
                         } else {
                             const ficha = document.createElement('div');
@@ -938,27 +728,15 @@
                         }
                     });
 
-                    if (currentUser && currentUser.role === 'alumno' && disponibles > 0 && !feriadosSemana[dia]) {
+                    // Botón para agendar recupero (Alumno)
+                    if (currentUser && currentUser.role === 'alumno' && disponibles > 0) {
                         const estaAnotado = ocupantes.some(a => a.id === currentUser.id);
-                        const creditosDisponibles = currentUser.creditosRecupero || 0;
-
-                        if (!estaAnotado && creditosDisponibles > 0) {
+                        if (!estaAnotado && (currentUser.clases_a_recuperar || 0) > 0) {
                             const btnReserva = document.createElement('button');
                             btnReserva.className = 'slot-reserva-btn';
                             btnReserva.textContent = '+ Agendar';
-                            btnReserva.onclick = () => alumnoRecuperarClase(semanaKey, slotKey);
+                            btnReserva.onclick = () => agendarRecupero(currentUser.id, fechaIso);
                             slotCell.appendChild(btnReserva);
-                        }
-                    }
-
-                    if (currentUser && currentUser.role === 'admin' && disponibles > 0 && !feriadosSemana[dia]) {
-                        const alumnosConCredito = dbAlumnos.filter(a => a.role === 'alumno' && (a.creditosRecupero || 0) > 0 && !ocupantes.some(o => o.id === a.id));
-                        if (alumnosConCredito.length > 0) {
-                            const btnAdminRec = document.createElement('button');
-                            btnAdminRec.className = 'slot-admin-recupero-btn';
-                            btnAdminRec.textContent = '+ Asignar Recupero';
-                            btnAdminRec.onclick = () => adminAsignarRecuperoManual(semanaKey, slotKey, alumnosConCredito);
-                            slotCell.appendChild(btnAdminRec);
                         }
                     }
 
@@ -969,150 +747,70 @@
             });
         }
 
-        function getOcupantesSlot(semanaKey, slotKey) {
+        function getOcupantesSlot(slotKey, fechaIso) {
             let ocupantes = [];
 
-            dbAlumnos.filter(a => a.role === 'alumno').forEach(cli => {
-                const tieneFijo = cli.turnosFijos && cli.turnosFijos.some(tf => tf.slotKey === slotKey);
-                if (tieneFijo) {
-                    const cancelo = dbCancelaciones[semanaKey] && dbCancelaciones[semanaKey][slotKey] && dbCancelaciones[semanaKey][slotKey].includes(cli.id);
-                    if (!cancelo) {
-                        ocupantes.push(cli);
-                    }
+            dbAlumnos.forEach(cli => {
+                const tieneFijo = cli.horarios_clases && cli.horarios_clases.some(tf => tf.slotKey === slotKey);
+                
+                // Verificar si canceló en esta fecha
+                const cancelo = dbHistorial.some(h => h.alumno_id === cli.id && h.fecha === fechaIso && h.estado === 'cancelada');
+
+                if (tieneFijo && !cancelo) {
+                    ocupantes.push(cli);
                 }
             });
 
-            if (dbRecuperos[semanaKey] && dbRecuperos[semanaKey][slotKey]) {
-                dbRecuperos[semanaKey][slotKey].forEach(cliId => {
-                    const cli = dbAlumnos.find(a => a.id === cliId);
-                    if (cli && !ocupantes.some(o => o.id === cli.id)) {
-                        ocupantes.push(cli);
-                    }
-                });
-            }
+            // Sumar los que recuperan en esta fecha
+            dbHistorial.filter(h => h.fecha === fechaIso && h.estado === 'recuperada').forEach(rec => {
+                const cli = dbAlumnos.find(a => a.id === rec.alumno_id);
+                if (cli && !ocupantes.some(o => o.id === cli.id)) {
+                    ocupantes.push(cli);
+                }
+            });
 
             return ocupantes;
         }
 
-        function alumnoCancelarClase(semanaKey, slotKey, dia, hora) {
-            const lunesActual = getLunesDeSemana(fechaReferencia);
-            const fechaClase = new Date(lunesActual);
-            fechaClase.setDate(fechaClase.getDate() + dia);
+        async function cancelarClaseModal(alumno, fechaIso, esAdmin) {
+            if (!confirm(`¿Confirmas cancelar la clase de ${alumno.nombre} para el día ${fechaIso}? Se sumará 1 crédito de recupero.`)) return;
+
+            // 1. Registrar cancelación en historial
+            await supabaseClient.from('historial_clases').insert([{
+                alumno_id: alumno.id,
+                fecha: fechaIso,
+                estado: 'cancelada'
+            }]);
+
+            // 2. Incrementar crédito en Supabase
+            const nuevosCreditos = (alumno.clases_a_recuperar || 0) + 1;
+            await supabaseClient.from('alumnos').update({ clases_a_recuperar: nuevosCreditos }).eq('id', alumno.id);
+
+            if (currentUser.id === alumno.id) currentUser.clases_a_recuperar = nuevosCreditos;
+
+            await cargarDatosSupabase();
+            renderGrid();
+        }
+
+        async function agendarRecupero(alumnoId, fechaIso) {
+            if (!confirm(`¿Agendar clase de recupero para el día ${fechaIso}?`)) return;
+
+            // 1. Registrar recupero en historial
+            await supabaseClient.from('historial_clases').insert([{
+                alumno_id: alumnoId,
+                fecha: fechaIso,
+                estado: 'recuperada'
+            }]);
+
+            // 2. Descontar crédito en Supabase
+            const alumno = dbAlumnos.find(a => a.id === alumnoId);
+            const nuevosCreditos = Math.max((alumno.clases_a_recuperar || 0) - 1, 0);
             
-            const [h, m] = hora.split(':');
-            fechaClase.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0);
+            await supabaseClient.from('alumnos').update({ clases_a_recuperar: nuevosCreditos }).eq('id', alumnoId);
 
-            const ahora = new Date();
-            const msDiferencia = fechaClase.getTime() - ahora.getTime();
-            const diferenciaHoras = msDiferencia / (1000 * 60 * 60);
+            if (currentUser.id === alumnoId) currentUser.clases_a_recuperar = nuevosCreditos;
 
-            if (diferenciaHoras < 2) {
-                if (diferenciaHoras < 0) {
-                    alert("No puedes cancelar una clase pasada.");
-                } else {
-                    alert(`Debes cancelar con al menos 2 horas de anticipación.\n(Faltan ${diferenciaHoras.toFixed(1)} hs).`);
-                }
-                return;
-            }
-
-            if (!confirm("¿Deseas cancelar esta clase? Obtendrás 1 crédito de recupero.")) return;
-
-            if (!dbCancelaciones[semanaKey]) dbCancelaciones[semanaKey] = {};
-            if (!dbCancelaciones[semanaKey][slotKey]) dbCancelaciones[semanaKey][slotKey] = [];
-            dbCancelaciones[semanaKey][slotKey].push(currentUser.id);
-            StorageService.saveCancelaciones(dbCancelaciones);
-
-            if (dbRecuperos[semanaKey] && dbRecuperos[semanaKey][slotKey]) {
-                dbRecuperos[semanaKey][slotKey] = dbRecuperos[semanaKey][slotKey].filter(id => id !== currentUser.id);
-                StorageService.saveRecuperos(dbRecuperos);
-            }
-
-            currentUser.creditosRecupero = (currentUser.creditosRecupero || 0) + 1;
-            currentUser.mesCredito = new Date().getMonth();
-            
-            const idx = dbAlumnos.findIndex(a => a.id === currentUser.id);
-            if (idx !== -1) dbAlumnos[idx] = currentUser;
-            StorageService.saveAlumnos(dbAlumnos);
-
-            actualizarCreditosDisplay();
-            renderGrid();
-            alert("Clase cancelada. Tienes 1 crédito para recupero de clase.");
-        }
-
-        function alumnoRecuperarClase(semanaKey, slotKey) {
-            if ((currentUser.creditosRecupero || 0) <= 0) {
-                alert("No tienes clases para recuperar.");
-                return;
-            }
-
-            if (!confirm("¿Deseas usar 1 crédito para agendar este recupero de clase?")) return;
-
-            if (!dbRecuperos[semanaKey]) dbRecuperos[semanaKey] = {};
-            if (!dbRecuperos[semanaKey][slotKey]) dbRecuperos[semanaKey][slotKey] = [];
-            dbRecuperos[semanaKey][slotKey].push(currentUser.id);
-            StorageService.saveRecuperos(dbRecuperos);
-
-            currentUser.creditosRecupero -= 1;
-            const idx = dbAlumnos.findIndex(a => a.id === currentUser.id);
-            if (idx !== -1) dbAlumnos[idx] = currentUser;
-            StorageService.saveAlumnos(dbAlumnos);
-
-            actualizarCreditosDisplay();
-            renderGrid();
-        }
-
-        function adminAsignarRecuperoManual(semanaKey, slotKey, alumnosDisponibles) {
-            let listadoText = alumnosDisponibles.map(a => `• N° ${a.numFicha} - ${a.nombre} (Créditos: ${a.creditosRecupero})`).join('\n');
-            let inputFicha = prompt(`Alumnos habilitados con clases a recuperar:\n\n${listadoText}\n\nIngresa el N° de Ficha (Ej: 0001):`);
-
-            if (!inputFicha) return;
-            inputFicha = inputFicha.trim().padStart(4, '0');
-
-            const alumnoSel = alumnosDisponibles.find(a => a.numFicha === inputFicha);
-
-            if (!alumnoSel) {
-                alert("Número de ficha no encontrado en la lista de alumnos con créditos disponibles.");
-                return;
-            }
-
-            if (!dbRecuperos[semanaKey]) dbRecuperos[semanaKey] = {};
-            if (!dbRecuperos[semanaKey][slotKey]) dbRecuperos[semanaKey][slotKey] = [];
-            dbRecuperos[semanaKey][slotKey].push(alumnoSel.id);
-            StorageService.saveRecuperos(dbRecuperos);
-
-            const dbIdx = dbAlumnos.findIndex(a => a.id === alumnoSel.id);
-            if (dbIdx !== -1) {
-                dbAlumnos[dbIdx].creditosRecupero -= 1;
-                StorageService.saveAlumnos(dbAlumnos);
-            }
-
-            renderListaAlumnos();
-            renderGrid();
-            alert(`Recupero asignado a ${alumnoSel.nombre} (Ficha ${alumnoSel.numFicha}).`);
-        }
-
-        function adminRemoverOcupante(semanaKey, slotKey, cliId) {
-            if (!confirm("Admin: ¿Forzar cancelación de este turno y sumar 1 crédito de recupero al alumno?")) return;
-
-            if (!dbCancelaciones[semanaKey]) dbCancelaciones[semanaKey] = {};
-            if (!dbCancelaciones[semanaKey][slotKey]) dbCancelaciones[semanaKey][slotKey] = [];
-            dbCancelaciones[semanaKey][slotKey].push(cliId);
-            StorageService.saveCancelaciones(dbCancelaciones);
-
-            if (dbRecuperos[semanaKey] && dbRecuperos[semanaKey][slotKey]) {
-                dbRecuperos[semanaKey][slotKey] = dbRecuperos[semanaKey][slotKey].filter(id => id !== cliId);
-                StorageService.saveRecuperos(dbRecuperos);
-            }
-
-            dbAlumnos = StorageService.getAlumnos();
-            const cliIndex = dbAlumnos.findIndex(a => a.id === cliId);
-            if (cliIndex !== -1) {
-                dbAlumnos[cliIndex].creditosRecupero = (dbAlumnos[cliIndex].creditosRecupero || 0) + 1;
-                dbAlumnos[cliIndex].mesCredito = new Date().getMonth();
-                StorageService.saveAlumnos(dbAlumnos);
-            }
-
-            renderListaAlumnos();
+            await cargarDatosSupabase();
             renderGrid();
         }
     </script>
