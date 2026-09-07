@@ -1,147 +1,151 @@
-// ==========================================
-// 1. CONFIGURACIÓN E INICIALIZACIÓN SUPABASE
-// ==========================================
-const SUPABASE_URL = 'https://bgrhwfutbmoktvdziamk.supabase.co';
-// Reemplazar este string con la clave public anon copiada de Supabase (Project Settings > API)
-const SUPABASE_ANON_KEY = 'TU_ANON_PUBLIC_KEY_AQUI'; 
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba de Conexión Supabase - Pilates</title>
+    <!-- Librería Oficial de Supabase vía CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f9; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        h1, h2 { color: #2c3e50; }
+        .form-group { margin-bottom: 12px; }
+        label { display: block; font-weight: bold; margin-bottom: 4px; }
+        input, select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button { background-color: #27ae60; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; width: 100%; margin-top: 10px; }
+        button:hover { background-color: #219150; }
+        #status { margin-top: 15px; padding: 10px; border-radius: 4px; display: none; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        pre { background: #eee; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+<body>
 
-const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+<div class="container">
+    <h1>Alta de Alumno (Prueba Supabase)</h1>
+    
+    <form id="alumnoForm">
+        <div class="form-group">
+            <label>N° Ficha / ID:</label>
+            <input type="text" id="num_ficha" value="001" required>
+        </div>
+        <div class="form-group">
+            <label>Nombre Completo:</label>
+            <input type="text" id="nombre" value="Nico Pérez" required>
+        </div>
+        <div class="form-group">
+            <label>Contraseña / PIN:</label>
+            <input type="text" id="pass" value="1234" required>
+        </div>
+        <div class="form-group">
+            <label>Número Celular:</label>
+            <input type="text" id="celular" value="+5491112345678" required>
+        </div>
+        <div class="form-group">
+            <label>Plan Elegido:</label>
+            <select id="plan">
+                <option value="1x semana">1x semana</option>
+                <option value="2x semana" selected>2x semana</option>
+                <option value="3x semana">3x semana</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Monto Arancel ($):</label>
+            <input type="number" id="arancel" value="25000" required>
+        </div>
+        <div class="form-group">
+            <label>Descuento Aplicado:</label>
+            <select id="descuento">
+                <option value="false" selected>No</option>
+                <option value="true">Sí (10%)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Fecha Límite de Pago:</label>
+            <input type="date" id="fecha_pago" value="2026-09-30" required>
+        </div>
+        
+        <button type="submit">Guardar en Supabase</button>
+    </form>
 
-// ==========================================
-// 2. MÓDULO DE PERSISTENCIA (SUPABASE API)
-// ==========================================
+    <div id="status"></div>
 
-/**
- * Obtiene la lista completa de alumnos desde la base de datos.
- */
-async function obtenerAlumnosDB() {
-    try {
-        const { data, error } = await _supabase
-            .from('Alumnos')
-            .select('*')
-            .order('nombre', { ascending: true });
+    <h2>Registros en la Base de Datos:</h2>
+    <button onclick="consultarAlumnos()" style="background-color: #2980b9;">Actualizar Lista</button>
+    <pre id="output">Cargando datos...</pre>
+</div>
 
-        if (error) throw error;
-        return data;
-    } catch (err) {
-        console.error('Error al obtener la lista de alumnos:', err.message);
-        return [];
-    }
-}
+<script>
+    // 1. CONFIGURACIÓN SUPABASE
+    const SUPABASE_URL = 'https://bgrhwfutbmoktvdziamk.supabase.co';
+    // ATENCIÓN: Reemplazar el siguiente string por tu clave 'anon public' de Supabase (Project Settings > API)
+    const SUPABASE_ANON_KEY = 'TU_ANON_PUBLIC_KEY_AQUI'; 
 
-/**
- * Registra un nuevo alumno en la base de datos.
- * Incluye número celular y la fecha límite de pago.
- */
-async function guardarAlumnoDB(nuevoAlumno) {
-    /*
-      Estructura esperada de nuevoAlumno:
-      {
-        num_ficha: '001',
-        nombre: 'Nico Pérez',
-        pass: '1234',
-        celular: '+5491112345678',
-        plan: '2x semana',
-        arancel: 25000,
-        descuento: false,
-        fecha_pago: '2026-09-30',
-        creditos_recupero: 0,
-        turnos_fijos: [{ dia: 'Lunes', hora: '18:00' }, { dia: 'Miércoles', hora: '18:00' }]
-      }
-    */
-    try {
-        const { data, error } = await _supabase
-            .from('Alumnos')
-            .insert([nuevoAlumno])
-            .select();
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        if (error) throw error;
-        console.log('Alumno guardado exitosamente:', data);
-        return data;
-    } catch (err) {
-        console.error('Error al dar de alta el alumno:', err.message);
-        return null;
-    }
-}
+    // 2. FUNCIÓN PARA BUSCAR Y MOSTRAR REGISTROS
+    async function consultarAlumnos() {
+        const output = document.getElementById('output');
+        output.innerText = 'Consultando...';
+        
+        try {
+            const { data, error } = await _supabase
+                .from('Alumnos')
+                .select('*');
 
-/**
- * Actualiza los datos de un alumno existente por su ID.
- */
-async function actualizarAlumnoDB(id, datosActualizados) {
-    try {
-        const { data, error } = await _supabase
-            .from('Alumnos')
-            .update(datosActualizados)
-            .eq('id', id)
-            .select();
-
-        if (error) throw error;
-        return data;
-    } catch (err) {
-        console.error('Error al actualizar el alumno:', err.message);
-        return null;
-    }
-}
-
-/**
- * Elimina la ficha de un alumno por ID.
- */
-async function eliminarAlumnoDB(id) {
-    try {
-        const { error } = await _supabase
-            .from('Alumnos')
-            .delete()
-            .eq('id', id);
-
-        if (error) throw error;
-        return true;
-    } catch (err) {
-        console.error('Error al eliminar el alumno:', err.message);
-        return false;
-    }
-}
-
-// ==========================================
-// 3. LÓGICA DE NEGOCIO Y ESTADO DINÁMICO
-// ==========================================
-
-/**
- * Evalúa si el alumno está ACTIVO o PENDIENTE en función de la semana visualizada.
- * 
- * @param {string} fechaPagoAlumno - Fecha límite en formato 'YYYY-MM-DD' (ej: '2026-09-30')
- * @param {Date|string} fechaInicioSemanaNavegada - Fecha correspondiente al lunes de la semana que se está mirando en la app.
- * @returns {string} 'ACTIVO' | 'PENDIENTE'
- */
-function calcularEstadoPorSemana(fechaPagoAlumno, fechaInicioSemanaNavegada) {
-    if (!fechaPagoAlumno) return 'PENDIENTE';
-
-    // Parseo seguro de fechas sin desfase horario
-    const [pAño, pMes, pDia] = fechaPagoAlumno.split('-').map(Number);
-    const limitePago = new Date(pAño, pMes - 1, pDia, 23, 59, 59);
-
-    const semanaNavegada = new Date(fechaInicioSemanaNavegada);
-    semanaNavegada.setHours(0, 0, 0, 0);
-
-    // Si el inicio de la semana que se consulta supera la fecha tope pagada, figura PENDIENTE
-    if (semanaNavegada > limitePago) {
-        return 'PENDIENTE';
+            if (error) throw error;
+            output.innerText = JSON.stringify(data, null, 2);
+        } catch (err) {
+            output.innerText = 'Error al consultar: ' + err.message;
+        }
     }
 
-    return 'ACTIVO';
-}
+    // 3. EVENTO DE ENVÍO DEL FORMULARIO (INSERT)
+    document.getElementById('alumnoForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const statusDiv = document.getElementById('status');
+        statusDiv.style.display = 'none';
 
-/**
- * Procesa el objeto del alumno agregando la propiedad calculada 'estado_semanal'
- * para ser renderizada en la interfaz.
- */
-function obtenerFichaAlumnoParaSemana(alumno, fechaInicioSemanaNavegada) {
-    const estadoDinamico = calcularEstadoPorSemana(
-        alumno.fecha_pago, 
-        fechaInicioSemanaNavegada
-    );
+        const nuevoAlumno = {
+            num_ficha: document.getElementById('num_ficha').value,
+            nombre: document.getElementById('nombre').value,
+            pass: document.getElementById('pass').value,
+            celular: document.getElementById('celular').value,
+            plan: document.getElementById('plan').value,
+            arancel: parseFloat(document.getElementById('arancel').value),
+            descuento: document.getElementById('descuento').value === 'true',
+            fecha_pago: document.getElementById('fecha_pago').value,
+            creditos_recupero: 0,
+            turnos_fijos: []
+        };
 
-    return {
-        ...alumno,
-        estado_semanal: estadoDinamico
-    };
-}
+        try {
+            const { data, error } = await _supabase
+                .from('Alumnos')
+                .insert([nuevoAlumno])
+                .select();
+
+            if (error) throw error;
+
+            statusDiv.className = 'success';
+            statusDiv.innerText = '¡Alumno guardado con éxito en Supabase!';
+            statusDiv.style.display = 'block';
+
+            // Actualiza la lista visible
+            consultarAlumnos();
+        } catch (err) {
+            statusDiv.className = 'error';
+            statusDiv.innerText = 'Error al guardar: ' + err.message;
+            statusDiv.style.display = 'block';
+        }
+    });
+
+    // Carga inicial al abrir la página
+    consultarAlumnos();
+</script>
+
+</body>
+</html>
