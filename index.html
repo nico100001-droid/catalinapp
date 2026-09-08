@@ -98,7 +98,7 @@
             gap: 10px;
         }
 
-        .user-info { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; flex-wrap: wrap; }
+        .user-info { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; flex-wrap: wrap; }
         .badge-status { background: #27ae60; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
         .badge-status.inactive { background: #c0392b; }
         .badge-creditos { background: var(--warning); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; color: #1e1e24; }
@@ -127,6 +127,7 @@
             display: flex;
             flex-direction: column;
             overflow-x: auto;
+            position: relative;
         }
 
         .grid-header {
@@ -215,7 +216,7 @@
             font-weight: bold;
             font-size: 0.65rem;
             border: none;
-            padding: 3px;
+            padding: 4px;
             border-radius: 4px;
             cursor: pointer;
             margin-top: 2px;
@@ -261,6 +262,17 @@
             background: #8e44ad;
             color: #fff;
         }
+
+        .alert-banner-no-pago {
+            background: #c0392b;
+            color: #fff;
+            text-align: center;
+            padding: 6px;
+            font-weight: bold;
+            font-size: 0.8rem;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
     </style>
 </head>
 <body>
@@ -289,9 +301,11 @@
             <strong id="display-username">Usuario</strong>
             <span id="display-role" class="badge-status">Alumno</span>
             <span id="display-num-ficha" class="badge-info hidden">Ficha: --</span>
-            <span id="display-payment" class="badge-status hidden">Estado Pago</span>
+            <span id="display-plan" class="badge-info hidden">Plan: --</span>
             <span id="display-arancel" class="badge-info hidden">Cuota: $0</span>
-            <span id="display-creditos" class="badge-creditos hidden">Clases para recuperar: 0</span>
+            <span id="display-payment" class="badge-status hidden">Estado</span>
+            <span id="display-vencimiento" class="badge-info hidden">Vence: --</span>
+            <span id="display-creditos" class="badge-creditos hidden">Clases a recuperar: 0</span>
         </div>
 
         <div style="display: flex; gap: 8px; align-items: center;">
@@ -300,8 +314,8 @@
             <button class="btn" id="btn-next-week">Sig ▶</button>
         </div>
 
-        <!-- NOTAS DE LA SEMANA -->
-        <div style="display: flex; align-items: center; gap: 5px;">
+        <!-- NOTAS DE LA SEMANA (ADMIN) -->
+        <div id="container-nota-semana" style="display: flex; align-items: center; gap: 5px;">
             <input type="text" id="semana-nota-input" placeholder="Nota de la semana..." style="background: var(--cell-bg); border: 1px solid var(--grid-border); color: #fff; border-radius: 4px; padding: 4px 8px; font-size: 0.75rem; width: 180px;">
             <button class="btn" id="btn-save-nota" style="padding: 4px 8px; font-size: 0.75rem;">💾</button>
         </div>
@@ -331,7 +345,7 @@
                     <input type="text" id="admin-cli-pass" maxlength="3" placeholder="Ej: 456" required>
                 </div>
                 <div class="form-group">
-                    <label>Fecha de Pago</label>
+                    <label>Fecha de Pago Realizado</label>
                     <input type="date" id="admin-cli-fecha-pago" required>
                 </div>
 
@@ -362,6 +376,10 @@
 
         <!-- PIZARRA DE CAMAS -->
         <div class="pizarra-container">
+            <div id="banner-bloqueo-mes" class="alert-banner-no-pago hidden">
+                ⚠️ MES NO ABONADO: Solo puedes visualizar los horarios. No es posible cancelar ni agendar clases fuera del periodo pagado.
+            </div>
+
             <div class="grid-header">
                 <div>Hora</div>
                 <div class="header-day">Lun <span id="h-0"></span><button id="btn-feriado-0" class="btn-feriado-toggle hidden" onclick="toggleFeriado(0)">Feriado</button></div>
@@ -397,7 +415,7 @@
         let fechaReferencia = new Date();
         let feriadosLocales = JSON.parse(localStorage.getItem('pilates_feriados') || '{}');
 
-        // LISTENERS DE INTERFAZ
+        // LISTENERS
         document.getElementById('login-form').addEventListener('submit', handleLogin);
         document.getElementById('btn-logout').addEventListener('click', handleLogout);
         document.getElementById('form-alta-alumno').addEventListener('submit', handleGuardarAlumno);
@@ -459,8 +477,7 @@
                 .from('alumnos')
                 .select('*')
                 .eq('nombre', userInput)
-                .eq('clave', passInput)
-                .eq('estado', 'activo');
+                .eq('clave', passInput);
 
             if (error || !alumnoData || alumnoData.length === 0) {
                 alert('Usuario o clave incorrectos.');
@@ -487,21 +504,52 @@
             if (currentUser.role === 'admin') {
                 document.getElementById('admin-sidebar').classList.remove('hidden');
                 document.getElementById('display-num-ficha').classList.add('hidden');
-                document.getElementById('display-payment').classList.add('hidden');
+                document.getElementById('display-plan').classList.add('hidden');
                 document.getElementById('display-arancel').classList.add('hidden');
+                document.getElementById('display-payment').classList.add('hidden');
+                document.getElementById('display-vencimiento').classList.add('hidden');
                 document.getElementById('display-creditos').classList.add('hidden');
+                document.getElementById('container-nota-semana').classList.remove('hidden');
                 toggles.forEach(t => t.classList.remove('hidden'));
             } else {
                 document.getElementById('admin-sidebar').classList.add('hidden');
+                document.getElementById('container-nota-semana').classList.add('hidden');
+                toggles.forEach(t => t.classList.add('hidden'));
+
                 document.getElementById('display-num-ficha').classList.remove('hidden');
-                document.getElementById('display-payment').classList.remove('hidden');
+                document.getElementById('display-plan').classList.remove('hidden');
                 document.getElementById('display-arancel').classList.remove('hidden');
+                document.getElementById('display-payment').classList.remove('hidden');
+                document.getElementById('display-vencimiento').classList.remove('hidden');
                 document.getElementById('display-creditos').classList.remove('hidden');
 
                 document.getElementById('display-num-ficha').textContent = `Ficha: ${currentUser.id}`;
+                document.getElementById('display-plan').textContent = `Plan: ${currentUser.plan_semanal || 1} x sem`;
                 document.getElementById('display-arancel').textContent = `Cuota: $${(currentUser.monto_abonado || 0).toLocaleString('es-AR')}`;
-                document.getElementById('display-creditos').textContent = `Clases para recuperar: ${currentUser.clases_a_recuperar || 0}`;
-                toggles.forEach(t => t.classList.add('hidden'));
+
+                // Evaluar vigencia
+                const hoyStr = new Date().toISOString().split('T')[0];
+                const estaActivo = currentUser.proximo_vencimiento >= hoyStr;
+
+                const statusBadge = document.getElementById('display-payment');
+                if (estaActivo) {
+                    statusBadge.textContent = "ACTIVO";
+                    statusBadge.className = "badge-status";
+                } else {
+                    statusBadge.textContent = "INACTIVO (VENCIDO)";
+                    statusBadge.className = "badge-status inactive";
+                }
+
+                const partsVenc = (currentUser.proximo_vencimiento || '').split('-');
+                const formattedVenc = partsVenc.length === 3 ? `${partsVenc[2]}/${partsVenc[1]}/${partsVenc[0]}` : '--';
+                document.getElementById('display-vencimiento').textContent = `Vence: ${formattedVenc}`;
+
+                const mesVistaActual = fechaReferencia.toISOString().slice(0, 7);
+                if (currentUser.mes_creditos_vigente !== mesVistaActual) {
+                    document.getElementById('display-creditos').textContent = `Clases a recuperar (Mes actual): 0`;
+                } else {
+                    document.getElementById('display-creditos').textContent = `Clases a recuperar: ${currentUser.clases_a_recuperar || 0}`;
+                }
             }
 
             await cargarDatosSupabase();
@@ -511,8 +559,7 @@
         async function cargarDatosSupabase() {
             const { data: alumnos } = await supabaseClient
                 .from('alumnos')
-                .select('*')
-                .eq('estado', 'activo');
+                .select('*');
             dbAlumnos = alumnos || [];
 
             const { data: historial } = await supabaseClient
@@ -546,9 +593,10 @@
                 return;
             }
 
-            const fOrigen = new Date(fechaPago + 'T00:00:00');
-            fOrigen.setMonth(fOrigen.getMonth() + 1);
-            const proximoVencimiento = fOrigen.toISOString().split('T')[0];
+            // Calculo exacto de vencimiento (1 mes posterior al pago)
+            const fPago = new Date(fechaPago + 'T00:00:00');
+            fPago.setMonth(fPago.getMonth() + 1);
+            const proximoVencimiento = fPago.toISOString().split('T')[0];
 
             const monto = calcularCuotaFormulario();
             const planSemanal = turnosFijos.length;
@@ -562,12 +610,13 @@
                         proximo_vencimiento: proximoVencimiento,
                         monto_abonado: monto,
                         plan_semanal: planSemanal,
-                        horarios_clases: turnosFijos
+                        horarios_clases: turnosFijos,
+                        estado: 'activo'
                     })
                     .eq('id', id);
 
                 if (error) alert("Error al actualizar: " + error.message);
-                else alert("Alumno actualizado con éxito.");
+                else alert("Alumno actualizado con exito.");
             } else {
                 const { error } = await supabaseClient
                     .from('alumnos')
@@ -579,6 +628,7 @@
                         plan_semanal: planSemanal,
                         horarios_clases: turnosFijos,
                         clases_a_recuperar: 0,
+                        mes_creditos_vigente: fechaPago.slice(0, 7),
                         estado: 'activo'
                     }]);
 
@@ -631,26 +681,28 @@
             const container = document.getElementById('lista-alumnos');
             container.innerHTML = '';
 
+            const hoyStr = new Date().toISOString().split('T')[0];
+
             dbAlumnos.forEach(a => {
                 const card = document.createElement('div');
                 card.className = 'alumno-card';
                 
                 let resumenFijos = a.horarios_clases ? a.horarios_clases.map(tf => `${DIAS_NOMBRES[tf.dia].slice(0,3)} ${tf.hora}`).join(', ') : 'Sin turnos';
-                const esPago = new Date(a.proximo_vencimiento) >= new Date();
+                const esPagoVigente = a.proximo_vencimiento >= hoyStr;
 
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <strong>Ficha N° ${a.id} - ${a.nombre}</strong>
-                        <span class="badge-status ${esPago ? '' : 'inactive'}" style="font-size:0.65rem;">
-                            ${esPago ? 'AL DÍA' : 'VENCIDO'}
+                        <span class="badge-status ${esPagoVigente ? '' : 'inactive'}" style="font-size:0.65rem;">
+                            ${esPagoVigente ? 'ACTIVO' : 'INACTIVO'}
                         </span>
                     </div>
                     <span style="color:#aaa;">Cel: ${a.celular || 'S/N'} | Clave: ${a.clave}</span><br>
                     <span style="color:#aaa;">Fijos: ${resumenFijos}</span><br>
-                    <span style="color:#8a8a93;">Cuota: $${(a.monto_abonado || 0).toLocaleString('es-AR')}</span> | 
+                    <span style="color:#8a8a93;">Vence: ${a.proximo_vencimiento || 'S/D'}</span> | 
                     <span style="color:#f39c12; font-weight:bold;">Recuperos: ${a.clases_a_recuperar || 0}</span>
                     <div class="alumno-actions">
-                        <button class="btn btn-warning" style="padding:2px 6px; font-size:0.65rem;" onclick="editarAlumno('${a.id}')">Editar</button>
+                        <button class="btn btn-warning" style="padding:2px 6px; font-size:0.65rem;" onclick="editarAlumno('${a.id}')">Editar / Renovar</button>
                         <button class="btn btn-danger" style="padding:2px 6px; font-size:0.65rem;" onclick="darDeBajaAlumno('${a.id}')">Baja</button>
                     </div>
                 `;
@@ -660,7 +712,7 @@
 
         async function darDeBajaAlumno(id) {
             if (!confirm("¿Dar de baja a este alumno?")) return;
-            await supabaseClient.from('alumnos').update({ estado: 'inactivo' }).eq('id', id);
+            await supabaseClient.from('alumnos').delete().eq('id', id);
             await cargarDatosSupabase();
             renderGrid();
         }
@@ -688,9 +740,31 @@
 
             document.getElementById('semana-label').textContent = `${mesNombre} ${anio}`;
 
-            // Cargar Nota de la Semana
-            const semanaKey = `nota_${lunesActual.toISOString().split('T')[0]}`;
-            document.getElementById('semana-nota-input').value = localStorage.getItem(semanaKey) || '';
+            // Cargar Nota de la Semana si es Admin
+            if (currentUser && currentUser.role === 'admin') {
+                const semanaKey = `nota_${lunesActual.toISOString().split('T')[0]}`;
+                document.getElementById('semana-nota-input').value = localStorage.getItem(semanaKey) || '';
+            }
+
+            // Validar si la semana en pantalla corresponde al periodo abonado por el alumno
+            let semanaEstaAbonada = true;
+            if (currentUser && currentUser.role === 'alumno') {
+                const inicioSemanaStr = lunesActual.toISOString().split('T')[0];
+                const fPago = currentUser.fecha_pago || '1970-01-01';
+                const fVenc = currentUser.proximo_vencimiento || '1970-01-01';
+
+                // Si el inicio de la semana no esta cubierto por el periodo pagado
+                if (inicioSemanaStr < fPago || inicioSemanaStr >= fVenc) {
+                    semanaEstaAbonada = false;
+                }
+            }
+
+            const bannerBlock = document.getElementById('banner-bloqueo-mes');
+            if (!semanaEstaAbonada && currentUser.role === 'alumno') {
+                bannerBlock.classList.remove('hidden');
+            } else {
+                bannerBlock.classList.add('hidden');
+            }
 
             for (let i = 0; i < 6; i++) {
                 const d = new Date(lunesActual);
@@ -750,14 +824,20 @@
                         ficha.className = `ficha ${esMio ? 'propia' : ''} ${esRecuperada ? 'recuperada' : ''}`;
                         ficha.innerHTML = `<span>${currentUser.role === 'admin' ? 'Ficha ' + cli.id + ' ' + cli.nombre : (esMio ? 'Tu Clase' : 'Ocupado')} ${esRecuperada ? '(Rec)' : ''}</span>`;
                         
-                        ficha.onclick = () => cancelarClaseModal(cli, fechaIso, slotKey, esRecuperada);
+                        // Solo permite cancelar si es Admin o si el Alumno está en una semana abonada
+                        if (currentUser.role === 'admin' || (esMio && semanaEstaAbonada)) {
+                            ficha.onclick = () => cancelarClaseModal(cli, fechaIso, slotKey, esRecuperada);
+                        }
                         slotCell.appendChild(ficha);
                     });
 
-                    // Botón Alumno: Agendar Recupero
-                    if (currentUser && currentUser.role === 'alumno' && disponibles > 0) {
+                    // Botón Alumno: Agendar Recupero (Unicamente si la semana esta abonada y tiene créditos de este mes)
+                    if (currentUser && currentUser.role === 'alumno' && disponibles > 0 && semanaEstaAbonada) {
                         const estaAnotado = ocupantes.some(a => a.id === currentUser.id);
-                        if (!estaAnotado && (currentUser.clases_a_recuperar || 0) > 0) {
+                        const mesFechaCelda = fechaIso.slice(0, 7);
+                        const creditosMes = currentUser.mes_creditos_vigente === mesFechaCelda ? (currentUser.clases_a_recuperar || 0) : 0;
+
+                        if (!estaAnotado && creditosMes > 0) {
                             const btnReserva = document.createElement('button');
                             btnReserva.className = 'slot-reserva-btn';
                             btnReserva.textContent = '+ Agendar';
@@ -785,17 +865,18 @@
         function getOcupantesSlot(slotKey, fechaIso) {
             let ocupantes = [];
 
-            // 1. Turnos fijos
             dbAlumnos.forEach(cli => {
+                // Verificar si la fecha analizada entra en la cobertura abonada del alumno
+                const estaEnPeriodo = cli.fecha_pago && cli.proximo_vencimiento && fechaIso >= cli.fecha_pago && fechaIso < cli.proximo_vencimiento;
+
                 const tieneFijo = cli.horarios_clases && cli.horarios_clases.some(tf => tf.slotKey === slotKey);
                 const cancelo = dbHistorial.some(h => h.alumno_id === cli.id && h.fecha === fechaIso && h.slot_key === slotKey && h.estado === 'cancelada');
 
-                if (tieneFijo && !cancelo) {
+                if (tieneFijo && estaEnPeriodo && !cancelo) {
                     ocupantes.push({ ...cli, tipoTurno: 'fijo' });
                 }
             });
 
-            // 2. Turnos recuperados/agendados especificos
             dbHistorial.filter(h => h.fecha === fechaIso && h.slot_key === slotKey && h.estado === 'recuperada').forEach(rec => {
                 const cli = dbAlumnos.find(a => a.id === rec.alumno_id);
                 if (cli && !ocupantes.some(o => o.id === cli.id)) {
@@ -807,23 +888,33 @@
         }
 
         async function cancelarClaseModal(alumno, fechaIso, slotKey, esRecuperada) {
-            if (currentUser.role !== 'admin' && alumno.id !== currentUser.id) return;
+            const mesFecha = fechaIso.slice(0, 7);
 
             if (esRecuperada) {
                 if (!confirm(`¿Cancelar la clase recuperada/agendada de ${alumno.nombre}?`)) return;
 
-                // Borrar el recupero especíico del historial
                 await supabaseClient.from('historial_clases').delete().eq('alumno_id', alumno.id).eq('fecha', fechaIso).eq('slot_key', slotKey);
 
-                // Devolver el crédito al alumno
-                const nuevosCreditos = (alumno.clases_a_recuperar || 0) + 1;
-                await supabaseClient.from('alumnos').update({ clases_a_recuperar: nuevosCreditos }).eq('id', alumno.id);
+                // Reintegrar crédito solo si el recupero cancelado corresponde al mes actual
+                let nuevosCreditos = (alumno.clases_a_recuperar || 0);
+                if (alumno.mes_creditos_vigente === mesFecha) {
+                    nuevosCreditos += 1;
+                } else {
+                    nuevosCreditos = 1;
+                }
 
-                if (currentUser.id === alumno.id) currentUser.clases_a_recuperar = nuevosCreditos;
+                await supabaseClient.from('alumnos').update({ 
+                    clases_a_recuperar: nuevosCreditos,
+                    mes_creditos_vigente: mesFecha
+                }).eq('id', alumno.id);
+
+                if (currentUser.id === alumno.id) {
+                    currentUser.clases_a_recuperar = nuevosCreditos;
+                    currentUser.mes_creditos_vigente = mesFecha;
+                }
             } else {
-                if (!confirm(`¿Cancelar la clase fija de ${alumno.nombre} para el ${fechaIso}? Se sumará 1 crédito.`)) return;
+                if (!confirm(`¿Cancelar la clase del día ${fechaIso}? Obteienes 1 crédito recuperable para este mes.`)) return;
 
-                // Insertar cancelación
                 await supabaseClient.from('historial_clases').insert([{
                     alumno_id: alumno.id,
                     fecha: fechaIso,
@@ -831,21 +922,31 @@
                     estado: 'cancelada'
                 }]);
 
-                // Sumar crédito
-                const nuevosCreditos = (alumno.clases_a_recuperar || 0) + 1;
-                await supabaseClient.from('alumnos').update({ clases_a_recuperar: nuevosCreditos }).eq('id', alumno.id);
+                let nuevosCreditos = (alumno.clases_a_recuperar || 0);
+                // Si cambia de mes, se reinician los créditos del nuevo mes
+                if (alumno.mes_creditos_vigente === mesFecha) {
+                    nuevosCreditos += 1;
+                } else {
+                    nuevosCreditos = 1;
+                }
 
-                if (currentUser.id === alumno.id) currentUser.clases_a_recuperar = nuevosCreditos;
+                await supabaseClient.from('alumnos').update({ 
+                    clases_a_recuperar: nuevosCreditos,
+                    mes_creditos_vigente: mesFecha
+                }).eq('id', alumno.id);
+
+                if (currentUser.id === alumno.id) {
+                    currentUser.clases_a_recuperar = nuevosCreditos;
+                    currentUser.mes_creditos_vigente = mesFecha;
+                }
             }
 
-            await cargarDatosSupabase();
-            renderGrid();
+            await setupInterface();
         }
 
         async function agendarRecupero(alumnoId, fechaIso, slotKey) {
             if (!confirm(`¿Agendar clase de recupero para el día ${fechaIso} a las ${slotKey.split('-')[0]}?`)) return;
 
-            // 1. Guardar en historial con slot_key
             await supabaseClient.from('historial_clases').insert([{
                 alumno_id: alumnoId,
                 fecha: fechaIso,
@@ -853,7 +954,6 @@
                 estado: 'recuperada'
             }]);
 
-            // 2. Descontar crédito
             const alumno = dbAlumnos.find(a => a.id === alumnoId);
             const nuevosCreditos = Math.max((alumno.clases_a_recuperar || 0) - 1, 0);
             
@@ -861,8 +961,7 @@
 
             if (currentUser.id === alumnoId) currentUser.clases_a_recuperar = nuevosCreditos;
 
-            await cargarDatosSupabase();
-            renderGrid();
+            await setupInterface();
         }
 
         async function asignarAlumnoPorAdmin(fechaIso, slotKey) {
