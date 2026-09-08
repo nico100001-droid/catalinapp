@@ -145,6 +145,7 @@
             align-items: center;
             justify-content: center;
             padding: 2px;
+            position: relative;
         }
 
         .grid-body { display: flex; flex-direction: column; overflow-y: auto; flex: 1; }
@@ -189,16 +190,23 @@
             justify-content: space-between;
             align-items: center;
             border-left: 4px solid #2980b9;
+            cursor: pointer;
         }
 
         .ficha.propia {
             background-color: #27ae60;
             border-left-color: #2ecc71;
-            cursor: pointer;
             font-weight: bold;
         }
 
+        .ficha.recuperada {
+            background-color: #d35400;
+            border-left-color: #e67e22;
+        }
+
         .disabled-slot { background-color: #1a1a20; opacity: 0.4; cursor: not-allowed; }
+        .slot-feriado { background-color: var(--feriado-bg) !important; border: 1px solid var(--feriado-border); }
+
         .hidden { display: none !important; }
 
         .slot-reserva-btn {
@@ -207,16 +215,16 @@
             font-weight: bold;
             font-size: 0.65rem;
             border: none;
-            padding: 4px;
+            padding: 3px;
             border-radius: 4px;
             cursor: pointer;
             margin-top: 2px;
             text-align: center;
         }
 
-        .slot-admin-recupero-btn {
-            background: #f39c12;
-            color: #1e1e24;
+        .slot-admin-btn {
+            background: #3498db;
+            color: #fff;
             font-weight: bold;
             font-size: 0.65rem;
             border: none;
@@ -241,6 +249,17 @@
             gap: 4px;
             margin-top: 6px;
             align-items: center;
+        }
+
+        .btn-feriado-toggle {
+            font-size: 0.6rem;
+            padding: 2px 4px;
+            margin-top: 2px;
+            border-radius: 3px;
+            border: none;
+            cursor: pointer;
+            background: #8e44ad;
+            color: #fff;
         }
     </style>
 </head>
@@ -277,8 +296,14 @@
 
         <div style="display: flex; gap: 8px; align-items: center;">
             <button class="btn" id="btn-prev-week">◀ Ant</button>
-            <span id="semana-label" style="font-weight: bold; font-size: 0.85rem; min-width: 160px; text-align: center;">Semana --</span>
+            <span id="semana-label" style="font-weight: bold; font-size: 0.85rem; min-width: 130px; text-align: center;">Semana --</span>
             <button class="btn" id="btn-next-week">Sig ▶</button>
+        </div>
+
+        <!-- NOTAS DE LA SEMANA -->
+        <div style="display: flex; align-items: center; gap: 5px;">
+            <input type="text" id="semana-nota-input" placeholder="Nota de la semana..." style="background: var(--cell-bg); border: 1px solid var(--grid-border); color: #fff; border-radius: 4px; padding: 4px 8px; font-size: 0.75rem; width: 180px;">
+            <button class="btn" id="btn-save-nota" style="padding: 4px 8px; font-size: 0.75rem;">💾</button>
         </div>
 
         <button class="btn btn-danger" id="btn-logout">Cerrar Sesión</button>
@@ -339,12 +364,12 @@
         <div class="pizarra-container">
             <div class="grid-header">
                 <div>Hora</div>
-                <div class="header-day">Lun <span id="h-0"></span></div>
-                <div class="header-day">Mar <span id="h-1"></span></div>
-                <div class="header-day">Mié <span id="h-2"></span></div>
-                <div class="header-day">Jue <span id="h-3"></span></div>
-                <div class="header-day">Vie <span id="h-4"></span></div>
-                <div class="header-day">Sáb <span id="h-5"></span></div>
+                <div class="header-day">Lun <span id="h-0"></span><button id="btn-feriado-0" class="btn-feriado-toggle hidden" onclick="toggleFeriado(0)">Feriado</button></div>
+                <div class="header-day">Mar <span id="h-1"></span><button id="btn-feriado-1" class="btn-feriado-toggle hidden" onclick="toggleFeriado(1)">Feriado</button></div>
+                <div class="header-day">Mié <span id="h-2"></span><button id="btn-feriado-2" class="btn-feriado-toggle hidden" onclick="toggleFeriado(2)">Feriado</button></div>
+                <div class="header-day">Jue <span id="h-3"></span><button id="btn-feriado-3" class="btn-feriado-toggle hidden" onclick="toggleFeriado(3)">Feriado</button></div>
+                <div class="header-day">Vie <span id="h-4"></span><button id="btn-feriado-4" class="btn-feriado-toggle hidden" onclick="toggleFeriado(4)">Feriado</button></div>
+                <div class="header-day">Sáb <span id="h-5"></span><button id="btn-feriado-5" class="btn-feriado-toggle hidden" onclick="toggleFeriado(5)">Feriado</button></div>
             </div>
 
             <div class="grid-body" id="grid-body"></div>
@@ -355,7 +380,7 @@
     <script>
         // CONFIGURACIÓN DE SUPABASE
         const SUPABASE_URL = 'https://bgrhwfutbmoktvdziamk.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJncmh3ZnV0Ym1va3R2ZHppYW1rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3ODU4NTYsImV4cCI6MjEwNDM2MTg1Nn0.1EjgnUOR3IwUmf_veno-oQZ4pEHKhbKElW0-AId2VZg';
+        const SUPABASE_KEY = 'COLOCA_AQUI_TU_ANON_KEY';
         
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -370,6 +395,7 @@
         let dbHistorial = [];
         let currentUser = null;
         let fechaReferencia = new Date();
+        let feriadosLocales = JSON.parse(localStorage.getItem('pilates_feriados') || '{}');
 
         // LISTENERS DE INTERFAZ
         document.getElementById('login-form').addEventListener('submit', handleLogin);
@@ -379,6 +405,7 @@
         document.getElementById('btn-prev-week').addEventListener('click', () => cambiarSemana(-7));
         document.getElementById('btn-next-week').addEventListener('click', () => cambiarSemana(7));
         document.getElementById('admin-cli-descuento').addEventListener('change', calcularCuotaFormulario);
+        document.getElementById('btn-save-nota').addEventListener('click', guardarNotaSemana);
 
         addHorarioSelector();
 
@@ -410,13 +437,11 @@
             return base;
         }
 
-        // LOGIN CONSULTANDO A SUPABASE
         async function handleLogin(e) {
             e.preventDefault();
             const userInput = document.getElementById('login-user').value.trim().toLowerCase();
             const passInput = document.getElementById('login-pass').value.trim();
 
-            // 1. Probar Login Admin
             const { data: adminData } = await supabaseClient
                 .from('administradores')
                 .select('*')
@@ -430,7 +455,6 @@
                 return;
             }
 
-            // 2. Probar Login Alumno
             const { data: alumnoData, error } = await supabaseClient
                 .from('alumnos')
                 .select('*')
@@ -458,12 +482,15 @@
             document.getElementById('display-username').textContent = currentUser.nombre;
             document.getElementById('display-role').textContent = currentUser.role === 'admin' ? 'ADMIN' : 'ALUMNO';
 
+            const toggles = document.querySelectorAll('.btn-feriado-toggle');
+
             if (currentUser.role === 'admin') {
                 document.getElementById('admin-sidebar').classList.remove('hidden');
                 document.getElementById('display-num-ficha').classList.add('hidden');
                 document.getElementById('display-payment').classList.add('hidden');
                 document.getElementById('display-arancel').classList.add('hidden');
                 document.getElementById('display-creditos').classList.add('hidden');
+                toggles.forEach(t => t.classList.remove('hidden'));
             } else {
                 document.getElementById('admin-sidebar').classList.add('hidden');
                 document.getElementById('display-num-ficha').classList.remove('hidden');
@@ -474,6 +501,7 @@
                 document.getElementById('display-num-ficha').textContent = `Ficha: ${currentUser.id}`;
                 document.getElementById('display-arancel').textContent = `Cuota: $${(currentUser.monto_abonado || 0).toLocaleString('es-AR')}`;
                 document.getElementById('display-creditos').textContent = `Clases para recuperar: ${currentUser.clases_a_recuperar || 0}`;
+                toggles.forEach(t => t.classList.add('hidden'));
             }
 
             await cargarDatosSupabase();
@@ -481,14 +509,12 @@
         }
 
         async function cargarDatosSupabase() {
-            // Cargar Alumnos Activos
             const { data: alumnos } = await supabaseClient
                 .from('alumnos')
                 .select('*')
                 .eq('estado', 'activo');
             dbAlumnos = alumnos || [];
 
-            // Cargar Historial de clases
             const { data: historial } = await supabaseClient
                 .from('historial_clases')
                 .select('*');
@@ -499,7 +525,6 @@
             }
         }
 
-        // GUARDA / EDITA EN SUPABASE
         async function handleGuardarAlumno(e) {
             e.preventDefault();
             const id = document.getElementById('admin-cli-id').value;
@@ -521,7 +546,6 @@
                 return;
             }
 
-            // Calcular próximo vencimiento (+1 mes)
             const fOrigen = new Date(fechaPago + 'T00:00:00');
             fOrigen.setMonth(fOrigen.getMonth() + 1);
             const proximoVencimiento = fOrigen.toISOString().split('T')[0];
@@ -530,7 +554,6 @@
             const planSemanal = turnosFijos.length;
 
             if (id) {
-                // Actualizar
                 const { error } = await supabaseClient
                     .from('alumnos')
                     .update({
@@ -546,7 +569,6 @@
                 if (error) alert("Error al actualizar: " + error.message);
                 else alert("Alumno actualizado con éxito.");
             } else {
-                // Insertar
                 const { error } = await supabaseClient
                     .from('alumnos')
                     .insert([{
@@ -666,6 +688,10 @@
 
             document.getElementById('semana-label').textContent = `${mesNombre} ${anio}`;
 
+            // Cargar Nota de la Semana
+            const semanaKey = `nota_${lunesActual.toISOString().split('T')[0]}`;
+            document.getElementById('semana-nota-input').value = localStorage.getItem(semanaKey) || '';
+
             for (let i = 0; i < 6; i++) {
                 const d = new Date(lunesActual);
                 d.setDate(d.getDate() + i);
@@ -685,15 +711,27 @@
                     const slotCell = document.createElement('div');
                     slotCell.className = 'slot-cell';
 
+                    const fechaCelda = new Date(lunesActual);
+                    fechaCelda.setDate(fechaCelda.getDate() + dia);
+                    const fechaIso = fechaCelda.toISOString().split('T')[0];
+
+                    if (feriadosLocales[fechaIso]) {
+                        slotCell.classList.add('slot-feriado');
+                        if (hora === "08:00") {
+                            const lbl = document.createElement('div');
+                            lbl.style.cssText = "color:#e74c3c; font-weight:bold; font-size:0.7rem; text-align:center;";
+                            lbl.textContent = "FERIADO";
+                            slotCell.appendChild(lbl);
+                        }
+                        row.appendChild(slotCell);
+                        continue;
+                    }
+
                     if (dia === 5 && !HORARIOS_SAB.includes(hora)) {
                         slotCell.classList.add('disabled-slot');
                         row.appendChild(slotCell);
                         continue;
                     }
-
-                    const fechaCelda = new Date(lunesActual);
-                    fechaCelda.setDate(fechaCelda.getDate() + dia);
-                    const fechaIso = fechaCelda.toISOString().split('T')[0];
 
                     const slotKey = `${hora}-d${dia}`;
                     const ocupantes = getOcupantesSlot(slotKey, fechaIso);
@@ -706,38 +744,35 @@
 
                     ocupantes.forEach(cli => {
                         const esMio = currentUser && cli.id === currentUser.id;
+                        const esRecuperada = cli.tipoTurno === 'recuperada';
 
-                        if (currentUser && currentUser.role === 'admin') {
-                            const ficha = document.createElement('div');
-                            ficha.className = 'ficha';
-                            ficha.innerHTML = `<span>Ficha ${cli.id} ${cli.nombre}</span>`;
-                            ficha.onclick = () => cancelarClaseModal(cli, fechaIso, true);
-                            slotCell.appendChild(ficha);
-                        } else if (esMio) {
-                            const ficha = document.createElement('div');
-                            ficha.className = 'ficha propia';
-                            ficha.innerHTML = `<span>Tu Clase</span>`;
-                            ficha.onclick = () => cancelarClaseModal(cli, fechaIso, false);
-                            slotCell.appendChild(ficha);
-                        } else {
-                            const ficha = document.createElement('div');
-                            ficha.className = 'ficha';
-                            ficha.style.opacity = '0.6';
-                            ficha.innerHTML = `<span>Ocupado</span>`;
-                            slotCell.appendChild(ficha);
-                        }
+                        const ficha = document.createElement('div');
+                        ficha.className = `ficha ${esMio ? 'propia' : ''} ${esRecuperada ? 'recuperada' : ''}`;
+                        ficha.innerHTML = `<span>${currentUser.role === 'admin' ? 'Ficha ' + cli.id + ' ' + cli.nombre : (esMio ? 'Tu Clase' : 'Ocupado')} ${esRecuperada ? '(Rec)' : ''}</span>`;
+                        
+                        ficha.onclick = () => cancelarClaseModal(cli, fechaIso, slotKey, esRecuperada);
+                        slotCell.appendChild(ficha);
                     });
 
-                    // Botón para agendar recupero (Alumno)
+                    // Botón Alumno: Agendar Recupero
                     if (currentUser && currentUser.role === 'alumno' && disponibles > 0) {
                         const estaAnotado = ocupantes.some(a => a.id === currentUser.id);
                         if (!estaAnotado && (currentUser.clases_a_recuperar || 0) > 0) {
                             const btnReserva = document.createElement('button');
                             btnReserva.className = 'slot-reserva-btn';
                             btnReserva.textContent = '+ Agendar';
-                            btnReserva.onclick = () => agendarRecupero(currentUser.id, fechaIso);
+                            btnReserva.onclick = () => agendarRecupero(currentUser.id, fechaIso, slotKey);
                             slotCell.appendChild(btnReserva);
                         }
+                    }
+
+                    // Botón Admin: Asignar Turno por Ficha
+                    if (currentUser && currentUser.role === 'admin' && disponibles > 0) {
+                        const btnAdminAssign = document.createElement('button');
+                        btnAdminAssign.className = 'slot-admin-btn';
+                        btnAdminAssign.textContent = '+ Asignar';
+                        btnAdminAssign.onclick = () => asignarAlumnoPorAdmin(fechaIso, slotKey);
+                        slotCell.appendChild(btnAdminAssign);
                     }
 
                     row.appendChild(slotCell);
@@ -750,59 +785,75 @@
         function getOcupantesSlot(slotKey, fechaIso) {
             let ocupantes = [];
 
+            // 1. Turnos fijos
             dbAlumnos.forEach(cli => {
                 const tieneFijo = cli.horarios_clases && cli.horarios_clases.some(tf => tf.slotKey === slotKey);
-                
-                // Verificar si canceló en esta fecha
-                const cancelo = dbHistorial.some(h => h.alumno_id === cli.id && h.fecha === fechaIso && h.estado === 'cancelada');
+                const cancelo = dbHistorial.some(h => h.alumno_id === cli.id && h.fecha === fechaIso && h.slot_key === slotKey && h.estado === 'cancelada');
 
                 if (tieneFijo && !cancelo) {
-                    ocupantes.push(cli);
+                    ocupantes.push({ ...cli, tipoTurno: 'fijo' });
                 }
             });
 
-            // Sumar los que recuperan en esta fecha
-            dbHistorial.filter(h => h.fecha === fechaIso && h.estado === 'recuperada').forEach(rec => {
+            // 2. Turnos recuperados/agendados especificos
+            dbHistorial.filter(h => h.fecha === fechaIso && h.slot_key === slotKey && h.estado === 'recuperada').forEach(rec => {
                 const cli = dbAlumnos.find(a => a.id === rec.alumno_id);
                 if (cli && !ocupantes.some(o => o.id === cli.id)) {
-                    ocupantes.push(cli);
+                    ocupantes.push({ ...cli, tipoTurno: 'recuperada', historialId: rec.id });
                 }
             });
 
             return ocupantes;
         }
 
-        async function cancelarClaseModal(alumno, fechaIso, esAdmin) {
-            if (!confirm(`¿Confirmas cancelar la clase de ${alumno.nombre} para el día ${fechaIso}? Se sumará 1 crédito de recupero.`)) return;
+        async function cancelarClaseModal(alumno, fechaIso, slotKey, esRecuperada) {
+            if (currentUser.role !== 'admin' && alumno.id !== currentUser.id) return;
 
-            // 1. Registrar cancelación en historial
-            await supabaseClient.from('historial_clases').insert([{
-                alumno_id: alumno.id,
-                fecha: fechaIso,
-                estado: 'cancelada'
-            }]);
+            if (esRecuperada) {
+                if (!confirm(`¿Cancelar la clase recuperada/agendada de ${alumno.nombre}?`)) return;
 
-            // 2. Incrementar crédito en Supabase
-            const nuevosCreditos = (alumno.clases_a_recuperar || 0) + 1;
-            await supabaseClient.from('alumnos').update({ clases_a_recuperar: nuevosCreditos }).eq('id', alumno.id);
+                // Borrar el recupero especíico del historial
+                await supabaseClient.from('historial_clases').delete().eq('alumno_id', alumno.id).eq('fecha', fechaIso).eq('slot_key', slotKey);
 
-            if (currentUser.id === alumno.id) currentUser.clases_a_recuperar = nuevosCreditos;
+                // Devolver el crédito al alumno
+                const nuevosCreditos = (alumno.clases_a_recuperar || 0) + 1;
+                await supabaseClient.from('alumnos').update({ clases_a_recuperar: nuevosCreditos }).eq('id', alumno.id);
+
+                if (currentUser.id === alumno.id) currentUser.clases_a_recuperar = nuevosCreditos;
+            } else {
+                if (!confirm(`¿Cancelar la clase fija de ${alumno.nombre} para el ${fechaIso}? Se sumará 1 crédito.`)) return;
+
+                // Insertar cancelación
+                await supabaseClient.from('historial_clases').insert([{
+                    alumno_id: alumno.id,
+                    fecha: fechaIso,
+                    slot_key: slotKey,
+                    estado: 'cancelada'
+                }]);
+
+                // Sumar crédito
+                const nuevosCreditos = (alumno.clases_a_recuperar || 0) + 1;
+                await supabaseClient.from('alumnos').update({ clases_a_recuperar: nuevosCreditos }).eq('id', alumno.id);
+
+                if (currentUser.id === alumno.id) currentUser.clases_a_recuperar = nuevosCreditos;
+            }
 
             await cargarDatosSupabase();
             renderGrid();
         }
 
-        async function agendarRecupero(alumnoId, fechaIso) {
-            if (!confirm(`¿Agendar clase de recupero para el día ${fechaIso}?`)) return;
+        async function agendarRecupero(alumnoId, fechaIso, slotKey) {
+            if (!confirm(`¿Agendar clase de recupero para el día ${fechaIso} a las ${slotKey.split('-')[0]}?`)) return;
 
-            // 1. Registrar recupero en historial
+            // 1. Guardar en historial con slot_key
             await supabaseClient.from('historial_clases').insert([{
                 alumno_id: alumnoId,
                 fecha: fechaIso,
+                slot_key: slotKey,
                 estado: 'recuperada'
             }]);
 
-            // 2. Descontar crédito en Supabase
+            // 2. Descontar crédito
             const alumno = dbAlumnos.find(a => a.id === alumnoId);
             const nuevosCreditos = Math.max((alumno.clases_a_recuperar || 0) - 1, 0);
             
@@ -812,6 +863,43 @@
 
             await cargarDatosSupabase();
             renderGrid();
+        }
+
+        async function asignarAlumnoPorAdmin(fechaIso, slotKey) {
+            const inputFicha = prompt("Ingresa el N° de Ficha / ID del alumno a agendar:");
+            if (!inputFicha) return;
+
+            const alumno = dbAlumnos.find(a => a.id == inputFicha.trim());
+            if (!alumno) {
+                alert("Alumno no encontrado con esa ficha.");
+                return;
+            }
+
+            await agendarRecupero(alumno.id, fechaIso, slotKey);
+        }
+
+        function toggleFeriado(diaIndex) {
+            const lunesActual = getLunesDeSemana(fechaReferencia);
+            const d = new Date(lunesActual);
+            d.setDate(d.getDate() + diaIndex);
+            const fechaIso = d.toISOString().split('T')[0];
+
+            if (feriadosLocales[fechaIso]) {
+                delete feriadosLocales[fechaIso];
+            } else {
+                feriadosLocales[fechaIso] = true;
+            }
+
+            localStorage.setItem('pilates_feriados', JSON.stringify(feriadosLocales));
+            renderGrid();
+        }
+
+        function guardarNotaSemana() {
+            const lunesActual = getLunesDeSemana(fechaReferencia);
+            const semanaKey = `nota_${lunesActual.toISOString().split('T')[0]}`;
+            const val = document.getElementById('semana-nota-input').value;
+            localStorage.setItem(semanaKey, val);
+            alert("Nota guardada localmente.");
         }
     </script>
 </body>
