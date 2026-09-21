@@ -395,7 +395,7 @@
 
     </div>
 
-    <script>
+<script>
         // CONFIGURACIÓN DE SUPABASE
         const SUPABASE_URL = 'https://bgrhwfutbmoktvdziamk.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJncmh3ZnV0Ym1va3R2ZHppYW1rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3ODU4NTYsImV4cCI6MjEwNDM2MTg1Nn0.1EjgnUOR3IwUmf_veno-oQZ4pEHKhbKElW0-AId2VZg';
@@ -414,6 +414,22 @@
         let dbFeriados = [];
         let currentUser = null;
         let fechaReferencia = new Date();
+
+        // FUNCIONES AUXILIARES DE TIEMPO
+        function formatLocalDate(d) {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function getLunesDeSemana(fecha) {
+            const d = new Date(fecha);
+            d.setHours(0, 0, 0, 0);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            return new Date(d.setDate(diff));
+        }
 
         // LISTENERS
         document.getElementById('login-form').addEventListener('submit', handleLogin);
@@ -527,7 +543,7 @@
                 document.getElementById('display-plan').textContent = `Plan: ${currentUser.plan_semanal || 1} x sem`;
                 document.getElementById('display-arancel').textContent = `Cuota: $${(currentUser.monto_abonado || 0).toLocaleString('es-AR')}`;
 
-                const hoyStr = new Date().toISOString().split('T')[0];
+                const hoyStr = formatLocalDate(new Date());
                 const estaActivo = currentUser.proximo_vencimiento >= hoyStr;
 
                 const statusBadge = document.getElementById('display-payment');
@@ -543,7 +559,7 @@
                 const formattedVenc = partsVenc.length === 3 ? `${partsVenc[2]}/${partsVenc[1]}/${partsVenc[0]}` : '--';
                 document.getElementById('display-vencimiento').textContent = `Vence: ${formattedVenc}`;
 
-                const mesVistaActual = fechaReferencia.toISOString().slice(0, 7);
+                const mesVistaActual = formatLocalDate(fechaReferencia).slice(0, 7);
                 if (currentUser.mes_creditos_vigente !== mesVistaActual) {
                     document.getElementById('display-creditos').textContent = `Clases a recuperar (Mes actual): 0`;
                 } else {
@@ -593,7 +609,7 @@
 
             const fPago = new Date(fechaPago + 'T00:00:00');
             fPago.setMonth(fPago.getMonth() + 1);
-            const proximoVencimiento = fPago.toISOString().split('T')[0];
+            const proximoVencimiento = formatLocalDate(fPago);
 
             const monto = calcularCuotaFormulario();
             const planSemanal = turnosFijos.length;
@@ -678,7 +694,7 @@
             const container = document.getElementById('lista-alumnos');
             container.innerHTML = '';
 
-            const hoyStr = new Date().toISOString().split('T')[0];
+            const hoyStr = formatLocalDate(new Date());
             const filtro = document.getElementById('search-alumnos').value.toLowerCase();
 
             const alumnosFiltrados = dbAlumnos.filter(a => 
@@ -724,14 +740,6 @@
             renderGrid();
         }
 
-        function getLunesDeSemana(fecha) {
-            const d = new Date(fecha);
-            d.setHours(0, 0, 0, 0);
-            const day = d.getDay();
-            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-            return new Date(d.setDate(diff));
-        }
-
         function renderGrid() {
             const gridBody = document.getElementById('grid-body');
             gridBody.innerHTML = '';
@@ -743,13 +751,13 @@
             document.getElementById('semana-label').textContent = `${mesNombre} ${anio}`;
 
             if (currentUser && currentUser.role === 'admin') {
-                const semanaKey = `nota_${lunesActual.toISOString().split('T')[0]}`;
+                const semanaKey = `nota_${formatLocalDate(lunesActual)}`;
                 document.getElementById('semana-nota-input').value = localStorage.getItem(semanaKey) || '';
             }
 
             let semanaEstaAbonada = true;
             if (currentUser && currentUser.role === 'alumno') {
-                const inicioSemanaStr = lunesActual.toISOString().split('T')[0];
+                const inicioSemanaStr = formatLocalDate(lunesActual);
                 const fPago = currentUser.fecha_pago || '1970-01-01';
                 const fVenc = currentUser.proximo_vencimiento || '1970-01-01';
 
@@ -786,7 +794,7 @@
 
                     const fechaCelda = new Date(lunesActual);
                     fechaCelda.setDate(fechaCelda.getDate() + dia);
-                    const fechaIso = fechaCelda.toISOString().split('T')[0];
+                    const fechaIso = formatLocalDate(fechaCelda);
 
                     const esFeriado = dbFeriados.some(f => f.fecha === fechaIso);
 
@@ -811,7 +819,6 @@
                     const slotKey = `${hora}-d${dia}`;
                     const ocupantes = getOcupantesSlot(slotKey, fechaIso);
                     
-                    // Lógica para prevenir conteos negativos visuales
                     const disponibles = Math.max(0, CAMAS_MAX - ocupantes.length);
 
                     const info = document.createElement('div');
@@ -886,7 +893,6 @@
         }
 
         async function cancelarClaseModal(alumno, fechaIso, slotKey, esRecuperada) {
-            // Regla de Negocio: Validación temporal
             const [horaTurno, minTurno] = slotKey.split('-')[0].split(':');
             const [yearTurno, monthTurno, dayTurno] = fechaIso.split('-');
             const turnoDate = new Date(yearTurno, monthTurno - 1, dayTurno, horaTurno, minTurno);
@@ -958,7 +964,6 @@
         }
 
         async function agendarRecupero(alumnoId, fechaIso, slotKey) {
-            // Regla de Negocio: Validación temporal
             const [horaTurno, minTurno] = slotKey.split('-')[0].split(':');
             const [yearTurno, monthTurno, dayTurno] = fechaIso.split('-');
             const turnoDate = new Date(yearTurno, monthTurno - 1, dayTurno, horaTurno, minTurno);
@@ -989,7 +994,6 @@
         }
 
         async function asignarAlumnoPorAdmin(fechaIso, slotKey, disponibles) {
-            // Validación estricta de cupos
             if (disponibles <= 0) {
                 alert("Atención: Este turno ya alcanzó el límite de 6 camas. No se pueden anotar más alumnos.");
                 return;
@@ -1011,7 +1015,8 @@
             const lunesActual = getLunesDeSemana(fechaReferencia);
             const d = new Date(lunesActual);
             d.setDate(d.getDate() + diaIndex);
-            const fechaIso = d.toISOString().split('T')[0];
+            
+            const fechaIso = formatLocalDate(d);
 
             const feriadoExistente = dbFeriados.find(f => f.fecha === fechaIso);
 
@@ -1028,7 +1033,7 @@
 
         function guardarNotaSemana() {
             const lunesActual = getLunesDeSemana(fechaReferencia);
-            const semanaKey = `nota_${lunesActual.toISOString().split('T')[0]}`;
+            const semanaKey = `nota_${formatLocalDate(lunesActual)}`;
             const val = document.getElementById('semana-nota-input').value;
             localStorage.setItem(semanaKey, val);
             alert("Nota guardada localmente.");
