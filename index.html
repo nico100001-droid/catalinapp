@@ -103,6 +103,29 @@
         .badge-creditos { background: var(--warning); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; color: #1e1e24; }
         .badge-info { background: #2980b9; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
 
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: var(--panel-bg);
+            border: 1px solid var(--grid-border);
+            width: 280px;
+            max-height: 300px;
+            overflow-y: auto;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            z-index: 50;
+            margin-top: 5px;
+            padding: 5px;
+        }
+
+        .dropdown-item {
+            padding: 8px;
+            border-bottom: 1px solid var(--grid-border);
+            font-size: 0.8rem;
+        }
+        .dropdown-item:last-child { border-bottom: none; }
+
         .main-container { display: flex; gap: 15px; flex: 1; overflow: hidden; }
 
         .sidebar {
@@ -319,7 +342,19 @@
             <button class="btn" id="btn-save-nota" style="padding: 4px 8px; font-size: 0.75rem;">💾</button>
         </div>
 
-        <button class="btn btn-danger" id="btn-logout">Cerrar Sesión</button>
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <!-- DESPLEGABLE DE ALERTAS DE PAGO -->
+            <div id="container-alertas-pago" class="hidden" style="position: relative;">
+                <button class="btn btn-warning" id="btn-toggle-alertas" style="display: flex; gap: 6px; align-items: center;">
+                    Pagos Pendientes <span id="badge-alertas" style="background:#1e1e24; color:#f39c12; padding:2px 6px; border-radius:10px; font-size:0.7rem;">0</span>
+                </button>
+                <div id="dropdown-alertas" class="dropdown-menu hidden">
+                    <!-- Contenido inyectado por JS -->
+                </div>
+            </div>
+
+            <button class="btn btn-danger" id="btn-logout">Cerrar Sesión</button>
+        </div>
     </div>
 
     <!-- CONTENEDOR PRINCIPAL -->
@@ -440,6 +475,19 @@
         document.getElementById('btn-next-week').addEventListener('click', () => cambiarSemana(7));
         document.getElementById('admin-cli-descuento').addEventListener('change', calcularCuotaFormulario);
         document.getElementById('btn-save-nota').addEventListener('click', guardarNotaSemana);
+        
+        // Listener Desplegable Alertas
+        document.getElementById('btn-toggle-alertas').addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('dropdown-alertas').classList.toggle('hidden');
+        });
+        
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('dropdown-alertas');
+            if (dropdown && !dropdown.classList.contains('hidden') && !e.target.closest('#container-alertas-pago')) {
+                dropdown.classList.add('hidden');
+            }
+        });
 
         addHorarioSelector();
 
@@ -509,6 +557,7 @@
             currentUser = null;
             document.getElementById('login-modal').classList.remove('hidden');
             document.getElementById('login-form').reset();
+            document.getElementById('dropdown-alertas').classList.add('hidden');
         }
 
         async function setupInterface() {
@@ -526,10 +575,12 @@
                 document.getElementById('display-vencimiento').classList.add('hidden');
                 document.getElementById('display-creditos').classList.add('hidden');
                 document.getElementById('container-nota-semana').classList.remove('hidden');
+                document.getElementById('container-alertas-pago').classList.remove('hidden');
                 toggles.forEach(t => t.classList.remove('hidden'));
             } else {
                 document.getElementById('admin-sidebar').classList.add('hidden');
                 document.getElementById('container-nota-semana').classList.add('hidden');
+                document.getElementById('container-alertas-pago').classList.add('hidden');
                 toggles.forEach(t => t.classList.add('hidden'));
 
                 document.getElementById('display-num-ficha').classList.remove('hidden');
@@ -589,7 +640,43 @@
 
             if (currentUser && currentUser.role === 'admin') {
                 renderListaAlumnos();
+                renderAlertasPagos();
             }
+        }
+
+        function renderAlertasPagos() {
+            if (currentUser.role !== 'admin') return;
+
+            const hoyStr = formatLocalDate(new Date());
+            const lista = document.getElementById('dropdown-alertas');
+            lista.innerHTML = '';
+
+            const deudores = dbAlumnos.filter(a => a.proximo_vencimiento <= hoyStr);
+            
+            document.getElementById('badge-alertas').textContent = deudores.length;
+
+            if (deudores.length === 0) {
+                lista.innerHTML = '<div class="dropdown-item" style="color:#aaa; text-align:center;">Todos los alumnos al día</div>';
+                return;
+            }
+
+            deudores.forEach(a => {
+                const item = document.createElement('div');
+                item.className = 'dropdown-item';
+                
+                const partsVenc = (a.proximo_vencimiento || '').split('-');
+                const formattedVenc = partsVenc.length === 3 ? `${partsVenc[2]}/${partsVenc[1]}/${partsVenc[0]}` : a.proximo_vencimiento;
+                
+                item.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <strong>Ficha ${a.id} - ${a.nombre}</strong>
+                        <button class="btn btn-warning" style="padding:2px 4px; font-size:0.6rem;" onclick="editarAlumno('${a.id}')">Renovar</button>
+                    </div>
+                    <div style="color:#e74c3c; margin-top:4px;">Venció el: ${formattedVenc}</div>
+                    <div style="color:#8a8a93; font-size:0.7rem;">Cel: ${a.celular || 'S/N'}</div>
+                `;
+                lista.appendChild(item);
+            });
         }
 
         async function handleGuardarAlumno(e) {
@@ -663,6 +750,8 @@
         function editarAlumno(id) {
             const alumno = dbAlumnos.find(a => a.id == id);
             if (!alumno) return;
+            
+            document.getElementById('dropdown-alertas').classList.add('hidden');
 
             document.getElementById('form-alta-title').textContent = `Editar Alumno (Ficha ${alumno.id})`;
             document.getElementById('admin-cli-id').value = alumno.id;
@@ -712,7 +801,7 @@
                 card.className = 'alumno-card';
                 
                 let resumenFijos = a.horarios_clases ? a.horarios_clases.map(tf => `${DIAS_NOMBRES[tf.dia].slice(0,3)} ${tf.hora}`).join(', ') : 'Sin turnos';
-                const esPagoVigente = a.proximo_vencimiento >= hoyStr;
+                const esPagoVigente = a.proximo_vencimiento > hoyStr;
 
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:center;">
