@@ -445,7 +445,7 @@
         const TARIFAS_DEFAULT = { 1: 30000, 2: 35000, 3: 40000, 4: 45000, 5: 50000 };
 
         let dbAlumnos = [];
-        let dbAsistencias = [];
+        let dbhistorial_clases = [];
         let dbFeriados = [];
         let currentUser = null;
         let fechaReferencia = new Date();
@@ -626,11 +626,11 @@
             const { data: alumnos } = await supabaseClient.from('alumnos').select('*');
             dbAlumnos = alumnos || [];
 
-            const { data: asistencias, error: errorAsistencias } = await supabaseClient.from('asistencias').select('*');
-            if (errorAsistencias) {
-                console.error("Error lectura asistencias:", errorAsistencias.message);
+            const { data: historial_clases, error: errorhistorial_clases } = await supabaseClient.from('historial_clases').select('*');
+            if (errorhistorial_clases) {
+                console.error("Error lectura historial_clases:", errorhistorial_clases.message);
             }
-            dbAsistencias = asistencias || [];
+            dbhistorial_clases = historial_clases || [];
 
             const { data: feriados_data, error: errorFeriados } = await supabaseClient.from('feriados').select('*');
             if (errorFeriados) {
@@ -979,7 +979,7 @@
                 const estaEnPeriodo = cli.fecha_pago && cli.proximo_vencimiento && fechaIso >= cli.fecha_pago && fechaIso < cli.proximo_vencimiento;
                 const tieneFijo = cli.horarios_clases && cli.horarios_clases.some(tf => tf.slotKey === slotKey);
                 
-                const cancelo = dbAsistencias.some(a => 
+                const cancelo = dbhistorial_clases.some(a => 
                     a.alumno_id === cli.id && 
                     a.fecha_clase.startsWith(fechaIso) && 
                     a.hora_inicio === horaFormatted && 
@@ -991,7 +991,7 @@
                 }
             });
 
-            dbAsistencias.filter(a => 
+            dbhistorial_clases.filter(a => 
                 a.fecha_clase.startsWith(fechaIso) && 
                 a.hora_inicio === horaFormatted && 
                 a.tipo_clase === 'recupero' && 
@@ -1029,7 +1029,7 @@
             if (esRecuperada) {
                 if (!confirm(`¿Cancelar la clase recuperada/agendada de ${alumno.nombre}?`)) return;
 
-                await supabaseClient.from('asistencias')
+                await supabaseClient.from('historial_clases')
                     .delete()
                     .eq('alumno_id', alumno.id)
                     .eq('hora_inicio', horaFormatted)
@@ -1055,7 +1055,7 @@
             } else {
                 if (!confirm(`¿Cancelar la clase del día ${fechaIso}? Obtienes 1 crédito recuperable para este mes.`)) return;
 
-                await supabaseClient.from('asistencias').insert([{
+                await supabaseClient.from('historial_clases').insert([{
                     alumno_id: alumno.id,
                     fecha_clase: `${fechaIso} ${horaFormatted}`,
                     dia_semana: DIAS_NOMBRES[dia],
@@ -1100,7 +1100,7 @@
 
             const horaFormatted = hora.length === 5 ? `${hora}:00` : hora;
 
-            await supabaseClient.from('asistencias').insert([{
+            await supabaseClient.from('historial_clases').insert([{
                 alumno_id: alumnoId,
                 fecha_clase: `${fechaIso} ${horaFormatted}`,
                 dia_semana: DIAS_NOMBRES[dia],
