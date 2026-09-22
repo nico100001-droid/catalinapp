@@ -571,14 +571,18 @@
             renderGrid();
         }
 
-        async function cargarDatosSupabase() {
+async function cargarDatosSupabase() {
             const { data: alumnos } = await supabaseClient.from('alumnos').select('*');
             dbAlumnos = alumnos || [];
 
             const { data: historial } = await supabaseClient.from('historial_clases').select('*');
             dbHistorial = historial || [];
 
-            const { data: feriados } = await supabaseClient.from('feriado').select('*');
+            // Captura de errores para auditar problemas de nombre de tabla o RLS
+            const { data: feriados, error: errorFeriados } = await supabaseClient.from('feriado').select('*');
+            if (errorFeriados) {
+                console.error("Error lectura feriados:", errorFeriados.message);
+            }
             dbFeriados = feriados || [];
 
             if (currentUser && currentUser.role === 'admin') {
@@ -740,7 +744,7 @@
             renderGrid();
         }
 
-        function renderGrid() {
+function renderGrid() {
             const gridBody = document.getElementById('grid-body');
             gridBody.innerHTML = '';
 
@@ -796,16 +800,25 @@
                     fechaCelda.setDate(fechaCelda.getDate() + dia);
                     const fechaIso = formatLocalDate(fechaCelda);
 
-                    const esFeriado = dbFeriados.some(f => f.fecha === fechaIso);
+                    // Normalización: Extrae "YYYY-MM-DD" y limpia caracteres de importación CSV
+                    const datosFeriado = dbFeriados.find(f => f.fecha && f.fecha.trim().substring(0, 10) === fechaIso);
 
-                    if (esFeriado) {
+                    if (datosFeriado) {
                         slotCell.classList.add('slot-feriado');
-                        if (hora === "08:00") {
-                            const lbl = document.createElement('div');
-                            lbl.style.cssText = "color:#e74c3c; font-weight:bold; font-size:0.7rem; text-align:center;";
-                            lbl.textContent = "FERIADO";
-                            slotCell.appendChild(lbl);
+                        
+                        const lbl = document.createElement('div');
+                        lbl.style.cssText = "color:#e74c3c; font-weight:bold; font-size:0.75rem; text-align:center; padding-top: 15px;";
+                        lbl.textContent = "FERIADO";
+                        slotCell.appendChild(lbl);
+                        
+                        // Renderiza la observación del feriado solo en la primera franja horaria del día
+                        if (hora === "08:00" || (dia === 5 && hora === "09:00")) {
+                            const obsLbl = document.createElement('div');
+                            obsLbl.style.cssText = "color:#555; font-size:0.6rem; text-align:center; padding: 2px; line-height:1.2;";
+                            obsLbl.textContent = datosFeriado.obs || '';
+                            slotCell.appendChild(obsLbl);
                         }
+                        
                         row.appendChild(slotCell);
                         continue;
                     }
