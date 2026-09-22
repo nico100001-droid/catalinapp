@@ -578,12 +578,12 @@ async function cargarDatosSupabase() {
             const { data: historial } = await supabaseClient.from('historial_clases').select('*');
             dbHistorial = historial || [];
 
-            // Captura de errores para auditar problemas de nombre de tabla o RLS
-            const { data: feriados, error: errorFeriados } = await supabaseClient.from('feriado').select('*');
+            // Corrección: Lectura desde la tabla "feriados" en plural
+            const { data: feriados_data, error: errorFeriados } = await supabaseClient.from('feriados').select('*');
             if (errorFeriados) {
                 console.error("Error lectura feriados:", errorFeriados.message);
             }
-            dbFeriados = feriados || [];
+            dbFeriados = feriados_data || [];
 
             if (currentUser && currentUser.role === 'admin') {
                 renderListaAlumnos();
@@ -1024,20 +1024,22 @@ function renderGrid() {
             await agendarRecupero(alumno.id, fechaIso, slotKey);
         }
 
-        async function toggleFeriado(diaIndex) {
+async function toggleFeriado(diaIndex) {
             const lunesActual = getLunesDeSemana(fechaReferencia);
             const d = new Date(lunesActual);
             d.setDate(d.getDate() + diaIndex);
             
             const fechaIso = formatLocalDate(d);
 
-            const feriadoExistente = dbFeriados.find(f => f.fecha === fechaIso);
+            // Normalización: Extrae "YYYY-MM-DD"
+            const feriadoExistente = dbFeriados.find(f => f.fecha && f.fecha.trim().substring(0, 10) === fechaIso);
 
+            // Corrección: Escritura y borrado en la tabla "feriados" en plural
             if (feriadoExistente) {
-                await supabaseClient.from('feriado').delete().eq('fecha', fechaIso);
+                await supabaseClient.from('feriados').delete().eq('fecha', feriadoExistente.fecha);
             } else {
                 const obs = prompt("Observación del feriado (opcional):") || "";
-                await supabaseClient.from('feriado').insert([{ fecha: fechaIso, obs: obs }]);
+                await supabaseClient.from('feriados').insert([{ fecha: fechaIso, obs: obs }]);
             }
             
             await cargarDatosSupabase();
