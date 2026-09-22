@@ -395,7 +395,7 @@
 
     </div>
 
-<script>
+    <script>
         // CONFIGURACIÓN DE SUPABASE
         const SUPABASE_URL = 'https://bgrhwfutbmoktvdziamk.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJncmh3ZnV0Ym1va3R2ZHppYW1rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3ODU4NTYsImV4cCI6MjEwNDM2MTg1Nn0.1EjgnUOR3IwUmf_veno-oQZ4pEHKhbKElW0-AId2VZg';
@@ -410,7 +410,7 @@
         const TARIFAS_DEFAULT = { 1: 30000, 2: 35000, 3: 40000, 4: 45000, 5: 50000 };
 
         let dbAlumnos = [];
-        let dbHistorial = [];
+        let dbAsistencias = [];
         let dbFeriados = [];
         let currentUser = null;
         let fechaReferencia = new Date();
@@ -571,14 +571,16 @@
             renderGrid();
         }
 
-async function cargarDatosSupabase() {
+        async function cargarDatosSupabase() {
             const { data: alumnos } = await supabaseClient.from('alumnos').select('*');
             dbAlumnos = alumnos || [];
 
-            const { data: historial } = await supabaseClient.from('historial_clases').select('*');
-            dbHistorial = historial || [];
+            const { data: asistencias, error: errorAsistencias } = await supabaseClient.from('asistencias').select('*');
+            if (errorAsistencias) {
+                console.error("Error lectura asistencias:", errorAsistencias.message);
+            }
+            dbAsistencias = asistencias || [];
 
-            // Corrección: Lectura desde la tabla "feriados" en plural
             const { data: feriados_data, error: errorFeriados } = await supabaseClient.from('feriados').select('*');
             if (errorFeriados) {
                 console.error("Error lectura feriados:", errorFeriados.message);
@@ -633,7 +635,7 @@ async function cargarDatosSupabase() {
                     .eq('id', id);
 
                 if (error) alert("Error al actualizar: " + error.message);
-                else alert("Alumno actualizado con exito.");
+                else alert("Alumno actualizado con éxito.");
             } else {
                 const { error } = await supabaseClient
                     .from('alumnos')
@@ -744,7 +746,7 @@ async function cargarDatosSupabase() {
             renderGrid();
         }
 
-function renderGrid() {
+        function renderGrid() {
             const gridBody = document.getElementById('grid-body');
             gridBody.innerHTML = '';
 
@@ -800,7 +802,6 @@ function renderGrid() {
                     fechaCelda.setDate(fechaCelda.getDate() + dia);
                     const fechaIso = formatLocalDate(fechaCelda);
 
-                    // Normalización: Extrae "YYYY-MM-DD" y limpia caracteres de importación CSV
                     const datosFeriado = dbFeriados.find(f => f.fecha && f.fecha.trim().substring(0, 10) === fechaIso);
 
                     if (datosFeriado) {
@@ -811,7 +812,6 @@ function renderGrid() {
                         lbl.textContent = "FERIADO";
                         slotCell.appendChild(lbl);
                         
-                        // Renderiza la observación del feriado solo en la primera franja horaria del día
                         if (hora === "08:00" || (dia === 5 && hora === "09:00")) {
                             const obsLbl = document.createElement('div');
                             obsLbl.style.cssText = "color:#555; font-size:0.6rem; text-align:center; padding: 2px; line-height:1.2;";
@@ -830,7 +830,7 @@ function renderGrid() {
                     }
 
                     const slotKey = `${hora}-d${dia}`;
-                    const ocupantes = getOcupantesSlot(slotKey, fechaIso);
+                    const ocupantes = getOcupantesSlot(slotKey, fechaIso, hora);
                     
                     const disponibles = Math.max(0, CAMAS_MAX - ocupantes.length);
 
@@ -848,7 +848,7 @@ function renderGrid() {
                         ficha.innerHTML = `<span>${currentUser.role === 'admin' ? 'Ficha ' + cli.id + ' ' + cli.nombre : (esMio ? 'Tu Clase' : 'Ocupado')} ${esRecuperada ? '(Rec)' : ''}</span>`;
                         
                         if (currentUser.role === 'admin' || (esMio && semanaEstaAbonada)) {
-                            ficha.onclick = () => cancelarClaseModal(cli, fechaIso, slotKey, esRecuperada);
+                            ficha.onclick = () => cancelarClaseModal(cli, fechaIso, slotKey, esRecuperada, hora, dia);
                         }
                         slotCell.appendChild(ficha);
                     });
@@ -862,7 +862,7 @@ function renderGrid() {
                             const btnReserva = document.createElement('button');
                             btnReserva.className = 'slot-reserva-btn';
                             btnReserva.textContent = '+ Agendar';
-                            btnReserva.onclick = () => agendarRecupero(currentUser.id, fechaIso, slotKey);
+                            btnReserva.onclick = () => agendarRecupero(currentUser.id, fechaIso, slotKey, hora, dia);
                             slotCell.appendChild(btnReserva);
                         }
                     }
@@ -871,7 +871,7 @@ function renderGrid() {
                         const btnAdminAssign = document.createElement('button');
                         btnAdminAssign.className = 'slot-admin-btn';
                         btnAdminAssign.textContent = '+ Asignar';
-                        btnAdminAssign.onclick = () => asignarAlumnoPorAdmin(fechaIso, slotKey, disponibles);
+                        btnAdminAssign.onclick = () => asignarAlumnoPorAdmin(fechaIso, slotKey, disponibles, hora, dia);
                         slotCell.appendChild(btnAdminAssign);
                     }
 
@@ -882,30 +882,42 @@ function renderGrid() {
             });
         }
 
-        function getOcupantesSlot(slotKey, fechaIso) {
+        function getOcupantesSlot(slotKey, fechaIso, hora) {
             let ocupantes = [];
+            const horaFormatted = hora.length === 5 ? `${hora}:00` : hora;
 
             dbAlumnos.forEach(cli => {
                 const estaEnPeriodo = cli.fecha_pago && cli.proximo_vencimiento && fechaIso >= cli.fecha_pago && fechaIso < cli.proximo_vencimiento;
                 const tieneFijo = cli.horarios_clases && cli.horarios_clases.some(tf => tf.slotKey === slotKey);
-                const cancelo = dbHistorial.some(h => h.alumno_id === cli.id && h.fecha === fechaIso && h.slot_key === slotKey && h.estado === 'cancelada');
+                
+                const cancelo = dbAsistencias.some(a => 
+                    a.alumno_id === cli.id && 
+                    a.fecha_clase.startsWith(fechaIso) && 
+                    a.hora_inicio === horaFormatted && 
+                    a.estado === 'cancelada'
+                );
 
                 if (tieneFijo && estaEnPeriodo && !cancelo) {
                     ocupantes.push({ ...cli, tipoTurno: 'fijo' });
                 }
             });
 
-            dbHistorial.filter(h => h.fecha === fechaIso && h.slot_key === slotKey && h.estado === 'recuperada').forEach(rec => {
+            dbAsistencias.filter(a => 
+                a.fecha_clase.startsWith(fechaIso) && 
+                a.hora_inicio === horaFormatted && 
+                a.tipo_clase === 'recupero' && 
+                a.estado === 'asistida'
+            ).forEach(rec => {
                 const cli = dbAlumnos.find(a => a.id === rec.alumno_id);
                 if (cli && !ocupantes.some(o => o.id === cli.id)) {
-                    ocupantes.push({ ...cli, tipoTurno: 'recuperada', historialId: rec.id });
+                    ocupantes.push({ ...cli, tipoTurno: 'recuperada', asistenciaId: rec.id });
                 }
             });
 
             return ocupantes;
         }
 
-        async function cancelarClaseModal(alumno, fechaIso, slotKey, esRecuperada) {
+        async function cancelarClaseModal(alumno, fechaIso, slotKey, esRecuperada, hora, dia) {
             const [horaTurno, minTurno] = slotKey.split('-')[0].split(':');
             const [yearTurno, monthTurno, dayTurno] = fechaIso.split('-');
             const turnoDate = new Date(yearTurno, monthTurno - 1, dayTurno, horaTurno, minTurno);
@@ -923,11 +935,17 @@ function renderGrid() {
             }
 
             const mesFecha = fechaIso.slice(0, 7);
+            const horaFormatted = hora.length === 5 ? `${hora}:00` : hora;
 
             if (esRecuperada) {
                 if (!confirm(`¿Cancelar la clase recuperada/agendada de ${alumno.nombre}?`)) return;
 
-                await supabaseClient.from('historial_clases').delete().eq('alumno_id', alumno.id).eq('fecha', fechaIso).eq('slot_key', slotKey);
+                await supabaseClient.from('asistencias')
+                    .delete()
+                    .eq('alumno_id', alumno.id)
+                    .eq('hora_inicio', horaFormatted)
+                    .gte('fecha_clase', `${fechaIso}T00:00:00`)
+                    .lte('fecha_clase', `${fechaIso}T23:59:59`);
 
                 let nuevosCreditos = (alumno.clases_a_recuperar || 0);
                 if (alumno.mes_creditos_vigente === mesFecha) {
@@ -948,10 +966,12 @@ function renderGrid() {
             } else {
                 if (!confirm(`¿Cancelar la clase del día ${fechaIso}? Obtienes 1 crédito recuperable para este mes.`)) return;
 
-                await supabaseClient.from('historial_clases').insert([{
+                await supabaseClient.from('asistencias').insert([{
                     alumno_id: alumno.id,
-                    fecha: fechaIso,
-                    slot_key: slotKey,
+                    fecha_clase: `${fechaIso} ${horaFormatted}`,
+                    dia_semana: DIAS_NOMBRES[dia],
+                    hora_inicio: horaFormatted,
+                    tipo_clase: 'regular',
                     estado: 'cancelada'
                 }]);
 
@@ -976,7 +996,7 @@ function renderGrid() {
             await setupInterface();
         }
 
-        async function agendarRecupero(alumnoId, fechaIso, slotKey) {
+        async function agendarRecupero(alumnoId, fechaIso, slotKey, hora, dia) {
             const [horaTurno, minTurno] = slotKey.split('-')[0].split(':');
             const [yearTurno, monthTurno, dayTurno] = fechaIso.split('-');
             const turnoDate = new Date(yearTurno, monthTurno - 1, dayTurno, horaTurno, minTurno);
@@ -989,11 +1009,15 @@ function renderGrid() {
 
             if (!confirm(`¿Agendar clase de recupero para el día ${fechaIso} a las ${slotKey.split('-')[0]}?`)) return;
 
-            await supabaseClient.from('historial_clases').insert([{
+            const horaFormatted = hora.length === 5 ? `${hora}:00` : hora;
+
+            await supabaseClient.from('asistencias').insert([{
                 alumno_id: alumnoId,
-                fecha: fechaIso,
-                slot_key: slotKey,
-                estado: 'recuperada'
+                fecha_clase: `${fechaIso} ${horaFormatted}`,
+                dia_semana: DIAS_NOMBRES[dia],
+                hora_inicio: horaFormatted,
+                tipo_clase: 'recupero',
+                estado: 'asistida'
             }]);
 
             const alumno = dbAlumnos.find(a => a.id === alumnoId);
@@ -1006,7 +1030,7 @@ function renderGrid() {
             await setupInterface();
         }
 
-        async function asignarAlumnoPorAdmin(fechaIso, slotKey, disponibles) {
+        async function asignarAlumnoPorAdmin(fechaIso, slotKey, disponibles, hora, dia) {
             if (disponibles <= 0) {
                 alert("Atención: Este turno ya alcanzó el límite de 6 camas. No se pueden anotar más alumnos.");
                 return;
@@ -1021,20 +1045,18 @@ function renderGrid() {
                 return;
             }
 
-            await agendarRecupero(alumno.id, fechaIso, slotKey);
+            await agendarRecupero(alumno.id, fechaIso, slotKey, hora, dia);
         }
 
-async function toggleFeriado(diaIndex) {
+        async function toggleFeriado(diaIndex) {
             const lunesActual = getLunesDeSemana(fechaReferencia);
             const d = new Date(lunesActual);
             d.setDate(d.getDate() + diaIndex);
             
             const fechaIso = formatLocalDate(d);
 
-            // Normalización: Extrae "YYYY-MM-DD"
             const feriadoExistente = dbFeriados.find(f => f.fecha && f.fecha.trim().substring(0, 10) === fechaIso);
 
-            // Corrección: Escritura y borrado en la tabla "feriados" en plural
             if (feriadoExistente) {
                 await supabaseClient.from('feriados').delete().eq('fecha', feriadoExistente.fecha);
             } else {
