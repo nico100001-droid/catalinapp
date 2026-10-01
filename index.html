@@ -859,7 +859,7 @@
                 const fPago = currentUser.fecha_pago || '1970-01-01';
                 const fVenc = currentUser.proximo_vencimiento || '1970-01-01';
 
-                if (inicioSemanaStr < fPago || inicioSemanaStr >= fVenc) {
+                if (inicioSemanaStr < fPago || inicioSemanaStr > fVenc) {
                     semanaEstaAbonada = false;
                 }
             }
@@ -979,7 +979,7 @@
             const horaFormatted = hora.length === 5 ? `${hora}:00` : hora;
 
             dbAlumnos.forEach(cli => {
-                const estaEnPeriodo = cli.fecha_pago && cli.proximo_vencimiento && fechaIso >= cli.fecha_pago && fechaIso < cli.proximo_vencimiento;
+                const estaEnPeriodo = cli.fecha_pago && cli.proximo_vencimiento && fechaIso >= cli.fecha_pago && fechaIso <= cli.proximo_vencimiento;
                 const tieneFijo = cli.horarios_clases && cli.horarios_clases.some(tf => tf.slotKey === slotKey);
                 
                 const cancelo = dbhistorial_clases.some(a => 
