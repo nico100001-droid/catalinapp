@@ -1,1169 +1,456 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Turnos - Pilates</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        :root {
-            --bg-color: #1e1e24;
-            --panel-bg: #141419;
-            --grid-border: #3a3a43;
-            --cell-bg: #2a2a35;
-            --text-color: #ffffff;
-            --primary: #34495e;
-            --accent: #27ae60;
-            --danger: #c0392b;
-            --warning: #f39c12;
-            --feriado-bg: #251d24;
-            --feriado-border: #8e44ad;
-        }
-
-        * { box-sizing: border-box; }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 10px;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .login-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-
-        .login-card {
-            background: var(--panel-bg);
-            border: 1px solid var(--grid-border);
-            padding: 25px;
-            border-radius: 12px;
-            width: 360px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-        }
-
-        .login-card h2 { margin-top: 0; text-align: center; color: #3498db; }
-
-        .form-group { margin-bottom: 10px; }
-        .form-group label { display: block; font-size: 0.8rem; margin-bottom: 4px; color: #aaa; }
-        .form-group input, .form-group select, .form-group textarea {
-            width: 100%;
-            padding: 8px 10px;
-            background: var(--cell-bg);
-            border: 1px solid var(--grid-border);
-            color: #fff;
-            border-radius: 6px;
-            font-size: 0.85rem;
-        }
-
-        .btn {
-            background-color: var(--primary);
-            color: #fff;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 0.85rem;
-            transition: background 0.2s;
-        }
-
-        .btn:hover { opacity: 0.9; }
-        .btn-block { width: 100%; }
-        .btn-action { background-color: var(--accent); }
-        .btn-danger { background-color: var(--danger); }
-        .btn-warning { background-color: var(--warning); color: #1e1e24; }
-
-        .top-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: var(--panel-bg);
-            padding: 10px 15px;
-            border-radius: 8px;
-            border: 1px solid var(--grid-border);
-            margin-bottom: 10px;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .user-info { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; flex-wrap: wrap; }
-        .badge-status { background: #27ae60; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
-        .badge-status.inactive { background: #c0392b; }
-        .badge-creditos { background: var(--warning); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; color: #1e1e24; }
-        .badge-info { background: #2980b9; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
-
-        .dropdown-menu {
-            position: absolute;
-            top: 100%;
-            right: 0;
-            background: var(--panel-bg);
-            border: 1px solid var(--grid-border);
-            width: 280px;
-            max-height: 300px;
-            overflow-y: auto;
-            border-radius: 6px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-            z-index: 50;
-            margin-top: 5px;
-            padding: 5px;
-        }
-
-        .dropdown-item {
-            padding: 8px;
-            border-bottom: 1px solid var(--grid-border);
-            font-size: 0.8rem;
-        }
-        .dropdown-item:last-child { border-bottom: none; }
-
-        .main-container { display: flex; gap: 15px; flex: 1; overflow: hidden; }
-
-        .sidebar {
-            width: 340px;
-            background: var(--panel-bg);
-            border: 1px solid var(--grid-border);
-            border-radius: 8px;
-            padding: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            overflow-y: auto;
-        }
-
-        .pizarra-container {
-            flex: 1;
-            background: var(--panel-bg);
-            border: 1px solid var(--grid-border);
-            border-radius: 8px;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            overflow-x: auto;
-            position: relative;
-        }
-
-        .grid-header {
-            display: grid;
-            grid-template-columns: 75px repeat(6, minmax(110px, 1fr));
-            border-bottom: 2px solid var(--grid-border);
-            padding-bottom: 5px;
-            font-weight: bold;
-            font-size: 0.8rem;
-            text-align: center;
-        }
-
-        .header-day {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 2px;
-            position: relative;
-        }
-
-        .grid-body { display: flex; flex-direction: column; overflow-y: auto; flex: 1; }
-
-        .grid-row {
-            display: grid;
-            grid-template-columns: 75px repeat(6, minmax(110px, 1fr));
-            border-bottom: 1px solid var(--grid-border);
-            min-height: 52px;
-        }
-
-        .time-cell {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-            font-weight: bold;
-            color: #8a8a93;
-            border-right: 1px solid var(--grid-border);
-            background: #101014;
-        }
-
-        .slot-cell {
-            background-color: var(--cell-bg);
-            border-right: 1px solid var(--grid-border);
-            padding: 4px;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            position: relative;
-        }
-
-        .slot-info { font-size: 0.7rem; color: #8a8a93; text-align: center; font-weight: bold; margin-top: 2px; }
-
-        .ficha {
-            background-color: #34495e;
-            color: #fff;
-            padding: 4px 6px;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-left: 4px solid #2980b9;
-            cursor: pointer;
-        }
-
-        .ficha.propia {
-            background-color: #27ae60;
-            border-left-color: #2ecc71;
-            font-weight: bold;
-        }
-
-        .ficha.recuperada {
-            background-color: #d35400;
-            border-left-color: #e67e22;
-        }
-
-        .disabled-slot { background-color: #1a1a20; opacity: 0.4; cursor: not-allowed; }
-        .slot-feriado { background-color: var(--feriado-bg) !important; border: 1px solid var(--feriado-border); }
-
-        .hidden { display: none !important; }
-
-        .slot-reserva-btn {
-            background: #2ecc71;
-            color: #1e1e24;
-            font-weight: bold;
-            font-size: 0.65rem;
-            border: none;
-            padding: 4px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-top: 2px;
-            text-align: center;
-        }
-
-        .slot-admin-btn {
-            background: #8facbf;
-            color: #fff;
-            font-weight: bold;
-            font-size: 0.65rem;
-            border: none;
-            padding: 3px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-top: 2px;
-            text-align: center;
-        }
-
-        .alumno-card {
-            background: #1c1c24;
-            border: 1px solid var(--grid-border);
-            padding: 8px;
-            border-radius: 6px;
-            margin-bottom: 6px;
-            font-size: 0.75rem;
-        }
-
-        .alumno-actions {
-            display: flex;
-            gap: 4px;
-            margin-top: 6px;
-            align-items: center;
-        }
-
-        .btn-feriado-toggle {
-            font-size: 0.6rem;
-            padding: 2px 4px;
-            margin-top: 2px;
-            border-radius: 3px;
-            border: none;
-            cursor: pointer;
-            background: #8e44ad;
-            color: #fff;
-        }
-
-        .alert-banner-no-pago {
-            background: #c0392b;
-            color: #fff;
-            text-align: center;
-            padding: 6px;
-            font-weight: bold;
-            font-size: 0.8rem;
-            border-radius: 4px;
-            margin-bottom: 8px;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prueba Supabase - Pilates</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+    body { font-family: Arial, sans-serif; max-width: 1100px; margin: 0 auto; padding: 20px; background:#f4f5f7; color:#222; }
+    h1, h2 { margin-top: 0; }
+    section { background:#fff; border-radius:10px; padding:18px; margin-bottom:16px; box-shadow:0 1px 4px #0002; }
+    label { display:block; margin:10px 0 5px; font-weight:bold; }
+    select, input, button { padding:9px; font-size:15px; }
+    select, input { width:100%; box-sizing:border-box; }
+    button { cursor:pointer; margin-top:12px; }
+    .row { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+    .ok { color:#146b2e; font-weight:bold; }
+    .error { color:#a31515; white-space:pre-wrap; }
+    .info { background:#eef5ff; padding:10px; border-radius:7px; }
+    .warn { background:#fff5d9; padding:10px; border-radius:7px; }
+    table { width:100%; border-collapse:collapse; margin-top:12px; }
+    th,td { border:1px solid #ddd; padding:7px; text-align:left; }
+    th { background:#eee; }
+    code { background:#eee; padding:2px 4px; }
+    pre { background:#111; color:#eee; padding:12px; overflow:auto; border-radius:7px; }
+    @media(max-width:700px){ .row{grid-template-columns:1fr;} }
+</style>
 </head>
 <body>
 
-    <!-- MODAL DE LOGIN -->
-    <div id="login-modal" class="login-overlay">
-        <div class="login-card">
-            <h2>Acceso Pilates</h2>
-            <form id="login-form">
-                <div class="form-group">
-                    <label>Nombre y Apellido / Usuario</label>
-                    <input type="text" id="login-user" placeholder="Ej: juan perez o admin" autocomplete="username" required>
-                </div>
-                <div class="form-group">
-                    <label>Contraseña / Clave (3 dígitos)</label>
-                    <input type="password" id="login-pass" placeholder="Ingresa tu clave" autocomplete="current-password" required>
-                </div>
-                <button type="submit" class="btn btn-action btn-block">Ingresar</button>
-            </form>
+<h1>Prueba de Supabase — historial_clases</h1>
+
+<section>
+    <h2>1. Conexión</h2>
+    <div id="conexion">Probando...</div>
+</section>
+
+<section>
+    <h2>2. Alumno</h2>
+    <label for="alumno">Seleccionar alumno</label>
+    <select id="alumno"></select>
+    <div id="datosAlumno" class="info" style="margin-top:12px;">Seleccione un alumno.</div>
+</section>
+
+<section>
+    <h2>3. Cancelar una clase regular</h2>
+    <div class="warn">
+        Esta prueba inserta en <code>historial_clases</code>:
+        <code>tipo_clase = regular</code> y <code>estado = cancelada</code>.
+        También suma 1 a <code>clases_a_recuperar</code>.
+    </div>
+
+    <div class="row">
+        <div>
+            <label for="fechaCancelacion">Fecha</label>
+            <input type="date" id="fechaCancelacion">
+        </div>
+        <div>
+            <label for="horaCancelacion">Hora</label>
+            <select id="horaCancelacion"></select>
+        </div>
+        <div>
+            <label for="diaCancelacion">Día</label>
+            <input type="text" id="diaCancelacion" readonly>
         </div>
     </div>
 
-    <!-- BARRA SUPERIOR -->
-    <div class="top-bar">
-        <div class="user-info">
-            <strong id="display-username">Usuario</strong>
-            <span id="display-role" class="badge-status">Alumno</span>
-            <span id="display-num-ficha" class="badge-info hidden">Ficha: --</span>
-            <span id="display-plan" class="badge-info hidden">Plan: --</span>
-            <span id="display-arancel" class="badge-info hidden">Cuota: $0</span>
-            <span id="display-payment" class="badge-status hidden">Estado</span>
-            <span id="display-vencimiento" class="badge-info hidden">Vence: --</span>
-            <span id="display-creditos" class="badge-creditos hidden">Clases a recuperar: 0</span>
+    <button onclick="cancelarClase()">Cancelar clase y generar recupero</button>
+    <div id="resultadoCancelacion"></div>
+</section>
+
+<section>
+    <h2>4. Asignar un recupero</h2>
+    <div class="warn">
+        Esta prueba inserta en <code>historial_clases</code>:
+        <code>tipo_clase = recupero</code> y <code>estado = asistida</code>.
+        También resta 1 a <code>clases_a_recuperar</code>.
+    </div>
+
+    <div class="row">
+        <div>
+            <label for="fechaRecupero">Fecha</label>
+            <input type="date" id="fechaRecupero">
         </div>
-
-        <div style="display: flex; gap: 8px; align-items: center;">
-            <button class="btn" id="btn-prev-week">◀ Ant</button>
-            <span id="semana-label" style="font-weight: bold; font-size: 0.85rem; min-width: 130px; text-align: center;">Semana --</span>
-            <button class="btn" id="btn-next-week">Sig ▶</button>
+        <div>
+            <label for="horaRecupero">Hora</label>
+            <select id="horaRecupero"></select>
         </div>
-
-        <!-- NOTAS DE LA SEMANA (ADMIN) -->
-        <div id="container-nota-semana" style="display: flex; align-items: center; gap: 5px;">
-            <input type="text" id="semana-nota-input" placeholder="Nota de la semana..." style="background: var(--cell-bg); border: 1px solid var(--grid-border); color: #fff; border-radius: 4px; padding: 4px 8px; font-size: 0.75rem; width: 180px;">
-            <button class="btn" id="btn-save-nota" style="padding: 4px 8px; font-size: 0.75rem;">💾</button>
-        </div>
-
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <!-- DESPLEGABLE DE ALERTAS DE PAGO -->
-            <div id="container-alertas-pago" class="hidden" style="position: relative;">
-                <button class="btn btn-warning" id="btn-toggle-alertas" style="display: flex; gap: 6px; align-items: center;">
-                    Pagos Pendientes <span id="badge-alertas" style="background:#1e1e24; color:#f39c12; padding:2px 6px; border-radius:10px; font-size:0.7rem;">0</span>
-                </button>
-                <div id="dropdown-alertas" class="dropdown-menu hidden">
-                    <!-- Contenido inyectado por JS -->
-                </div>
-            </div>
-
-            <button class="btn btn-danger" id="btn-logout">Cerrar Sesión</button>
+        <div>
+            <label for="diaRecupero">Día</label>
+            <input type="text" id="diaRecupero" readonly>
         </div>
     </div>
 
-    <!-- CONTENEDOR PRINCIPAL -->
-    <div class="main-container">
-        
-        <!-- SIDEBAR ADMIN -->
-        <div id="admin-sidebar" class="sidebar hidden">
-            <h3 id="form-alta-title" style="margin:0; font-size: 0.95rem; border-bottom: 1px solid var(--grid-border); padding-bottom: 5px;">Alta de Alumno</h3>
-            
-            <form id="form-alta-alumno">
-                <input type="hidden" id="admin-cli-id">
-                <div class="form-group">
-                    <label>Nombre y Apellido (Minúsculas)</label>
-                    <input type="text" id="admin-cli-nombre" placeholder="Ej: juan perez" required>
-                </div>
-                <div class="form-group">
-                    <label>Número Celular</label>
-                    <input type="tel" id="admin-cli-celular" placeholder="Ej: 1123456789">
-                </div>
-                <div class="form-group">
-                    <label>Clave Acceso (Últimos 3 del DNI)</label>
-                    <input type="text" id="admin-cli-pass" maxlength="3" placeholder="Ej: 456" required>
-                </div>
-                <div class="form-group">
-                    <label>Fecha de Pago Realizado</label>
-                    <input type="date" id="admin-cli-fecha-pago" required>
-                </div>
-
-                <div style="border: 1px dashed var(--grid-border); padding: 8px; border-radius: 6px; margin-bottom: 10px;">
-                    <label style="font-size:0.75rem; font-weight:bold; color:#3498db; display:block; margin-bottom:5px;">Horarios Fijos Recurrentes</label>
-                    <div id="horarios-fijos-container"></div>
-                    <button type="button" class="btn" id="btn-add-horario" style="font-size:0.7rem; padding:4px 8px; margin-top:5px;">+ Agregar Turno Fijo</button>
-                </div>
-
-                <div class="form-group" style="display:flex; align-items:center; gap:8px;">
-                    <input type="checkbox" id="admin-cli-descuento" style="width:auto;">
-                    <label for="admin-cli-descuento" style="margin:0;">Aplicar Descuento Especial (10%)</label>
-                </div>
-
-                <div style="font-size:0.8rem; margin-bottom:10px; color:#f1c40f;">
-                    Cuota Mensual Estimada: <strong id="calculo-cuota-text">$0</strong>
-                </div>
-
-                <div style="display:flex; gap:6px;">
-                    <button type="submit" id="btn-guardar-alumno" class="btn btn-action btn-block">Registrar Alumno</button>
-                    <button type="button" id="btn-cancelar-edicion" class="btn btn-danger hidden" onclick="resetFormularioAlumno()">Cancelar</button>
-                </div>
-            </form>
-
-            <h4 style="margin: 8px 0 4px 0; font-size: 0.85rem;">Alumnos Registrados</h4>
-            <input type="search" id="search-alumnos" placeholder="Buscar por nombre o ficha..." style="width:100%; margin-bottom:8px; padding:6px; background:var(--cell-bg); border:1px solid var(--grid-border); color:#fff; border-radius:4px;" oninput="renderListaAlumnos()">
-            <div id="lista-alumnos" style="flex:1; overflow-y:auto;"></div>
-        </div>
-
-        <!-- PIZARRA DE CAMAS -->
-        <div class="pizarra-container">
-            <div id="banner-bloqueo-mes" class="alert-banner-no-pago hidden">
-                ⚠️ MES NO ABONADO: Solo puedes visualizar los horarios. No es posible cancelar ni agendar clases fuera del periodo pagado.
-            </div>
-
-            <div class="grid-header">
-                <div>Hora</div>
-                <div class="header-day">Lun <span id="h-0"></span><button id="btn-feriado-0" class="btn-feriado-toggle hidden" onclick="toggleFeriado(0)">Feriado</button></div>
-                <div class="header-day">Mar <span id="h-1"></span><button id="btn-feriado-1" class="btn-feriado-toggle hidden" onclick="toggleFeriado(1)">Feriado</button></div>
-                <div class="header-day">Mié <span id="h-2"></span><button id="btn-feriado-2" class="btn-feriado-toggle hidden" onclick="toggleFeriado(2)">Feriado</button></div>
-                <div class="header-day">Jue <span id="h-3"></span><button id="btn-feriado-3" class="btn-feriado-toggle hidden" onclick="toggleFeriado(3)">Feriado</button></div>
-                <div class="header-day">Vie <span id="h-4"></span><button id="btn-feriado-4" class="btn-feriado-toggle hidden" onclick="toggleFeriado(4)">Feriado</button></div>
-                <div class="header-day">Sáb <span id="h-5"></span><button id="btn-feriado-5" class="btn-feriado-toggle hidden" onclick="toggleFeriado(5)">Feriado</button></div>
-            </div>
-
-            <div class="grid-body" id="grid-body"></div>
-        </div>
-
-    </div>
-
-    <script>
-        // CONFIGURACIÓN DE SUPABASE
-        const SUPABASE_URL = 'https://bgrhwfutbmoktvdziamk.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJncmh3ZnV0Ym1va3R2ZHppYW1rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3ODU4NTYsImV4cCI6MjEwNDM2MTg1Nn0.1EjgnUOR3IwUmf_veno-oQZ4pEHKhbKElW0-AId2VZg';
-        
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        const HORARIOS_LV = ["08:00", "09:00", "10:00", "11:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00"];
-        const HORARIOS_SAB = ["09:00", "10:00", "11:00"];
-        const CAMAS_MAX = 6;
-        const DIAS_NOMBRES = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-        const MESES_ABREV = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
-        const TARIFAS_DEFAULT = { 1: 15000, 2: 30000, 3: 35000, 4: 45000, 5: 50000 };
-
-        let dbAlumnos = [];
-        let dbhistorial_clases = [];
-        let dbFeriados = [];
-        let currentUser = null;
-        let fechaReferencia = new Date();
-
-        // FUNCIONES AUXILIARES DE TIEMPO
-        function formatLocalDate(d) {
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        }
-
-        function getLunesDeSemana(fecha) {
-            const d = new Date(fecha);
-            d.setHours(0, 0, 0, 0);
-            const day = d.getDay();
-            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-            return new Date(d.setDate(diff));
-        }
-
-        // LISTENERS
-        document.getElementById('login-form').addEventListener('submit', handleLogin);
-        document.getElementById('btn-logout').addEventListener('click', handleLogout);
-        document.getElementById('form-alta-alumno').addEventListener('submit', handleGuardarAlumno);
-        document.getElementById('btn-add-horario').addEventListener('click', () => { addHorarioSelector(); calcularCuotaFormulario(); });
-        document.getElementById('btn-prev-week').addEventListener('click', () => cambiarSemana(-7));
-        document.getElementById('btn-next-week').addEventListener('click', () => cambiarSemana(7));
-        document.getElementById('admin-cli-descuento').addEventListener('change', calcularCuotaFormulario);
-        document.getElementById('btn-save-nota').addEventListener('click', guardarNotaSemana);
-        
-        // Listener Desplegable Alertas
-        document.getElementById('btn-toggle-alertas').addEventListener('click', (e) => {
-            e.stopPropagation();
-            document.getElementById('dropdown-alertas').classList.toggle('hidden');
-        });
-        
-        document.addEventListener('click', (e) => {
-            const dropdown = document.getElementById('dropdown-alertas');
-            if (dropdown && !dropdown.classList.contains('hidden') && !e.target.closest('#container-alertas-pago')) {
-                dropdown.classList.add('hidden');
-            }
-        });
-
-        addHorarioSelector();
-
-        function addHorarioSelector(diaDef = 0, horaDef = "08:00") {
-            const container = document.getElementById('horarios-fijos-container');
-            const div = document.createElement('div');
-            div.className = 'horario-row';
-            div.style.cssText = "display:flex; gap:4px; margin-bottom:5px;";
-
-            let optDias = DIAS_NOMBRES.map((d, i) => `<option value="${i}" ${i == diaDef ? 'selected' : ''}>${d}</option>`).join('');
-            let optHoras = HORARIOS_LV.map(h => `<option value="${h}" ${h == horaDef ? 'selected' : ''}>${h}</option>`).join('');
-
-            div.innerHTML = `
-                <select class="sel-dia" style="flex:1;">${optDias}</select>
-                <select class="sel-hora" style="flex:1;">${optHoras}</select>
-                <button type="button" class="btn btn-danger" onclick="this.parentElement.remove(); calcularCuotaFormulario();" style="padding:2px 6px;">X</button>
-            `;
-            container.appendChild(div);
-        }
-
-        function calcularCuotaFormulario() {
-            const cantidadClases = document.querySelectorAll('.horario-row').length;
-            const tieneDescuento = document.getElementById('admin-cli-descuento').checked;
-            
-            let base = TARIFAS_DEFAULT[Math.min(Math.max(cantidadClases, 1), 5)] || 0;
-            if (tieneDescuento) base = base * 0.90;
-
-            document.getElementById('calculo-cuota-text').textContent = `$${base.toLocaleString('es-AR')} (${cantidadClases} clase/s por sem)`;
-            return base;
-        }
-
-        async function handleLogin(e) {
-            e.preventDefault();
-            const userInput = document.getElementById('login-user').value.trim().toLowerCase();
-            const passInput = document.getElementById('login-pass').value.trim();
-
-            const { data: adminData } = await supabaseClient
-                .from('administradores')
-                .select('*')
-                .eq('usuario', userInput)
-                .eq('password', passInput);
-
-            if (adminData && adminData.length > 0) {
-                currentUser = { id: adminData[0].id, nombre: 'Administrador', role: 'admin' };
-                document.getElementById('login-modal').classList.add('hidden');
-                await setupInterface();
-                return;
-            }
-
-            const { data: alumnoData, error } = await supabaseClient
-                .from('alumnos')
-                .select('*')
-                .eq('nombre', userInput)
-                .eq('clave', passInput);
-
-            if (error || !alumnoData || alumnoData.length === 0) {
-                alert('Usuario o clave incorrectos.');
-                return;
-            }
-
-            currentUser = { ...alumnoData[0], role: 'alumno' };
-            document.getElementById('login-modal').classList.add('hidden');
-            await setupInterface();
-        }
-
-        function handleLogout() {
-            currentUser = null;
-            document.getElementById('login-modal').classList.remove('hidden');
-            document.getElementById('login-form').reset();
-            document.getElementById('dropdown-alertas').classList.add('hidden');
-        }
-
-        async function setupInterface() {
-            document.getElementById('display-username').textContent = currentUser.nombre;
-            document.getElementById('display-role').textContent = currentUser.role === 'admin' ? 'ADMIN' : 'ALUMNO';
-
-            const toggles = document.querySelectorAll('.btn-feriado-toggle');
-
-            if (currentUser.role === 'admin') {
-                document.getElementById('admin-sidebar').classList.remove('hidden');
-                document.getElementById('display-num-ficha').classList.add('hidden');
-                document.getElementById('display-plan').classList.add('hidden');
-                document.getElementById('display-arancel').classList.add('hidden');
-                document.getElementById('display-payment').classList.add('hidden');
-                document.getElementById('display-vencimiento').classList.add('hidden');
-                document.getElementById('display-creditos').classList.add('hidden');
-                document.getElementById('container-nota-semana').classList.remove('hidden');
-                document.getElementById('container-alertas-pago').classList.remove('hidden');
-                toggles.forEach(t => t.classList.remove('hidden'));
-            } else {
-                document.getElementById('admin-sidebar').classList.add('hidden');
-                document.getElementById('container-nota-semana').classList.add('hidden');
-                document.getElementById('container-alertas-pago').classList.add('hidden');
-                toggles.forEach(t => t.classList.add('hidden'));
-
-                document.getElementById('display-num-ficha').classList.remove('hidden');
-                document.getElementById('display-plan').classList.remove('hidden');
-                document.getElementById('display-arancel').classList.remove('hidden');
-                document.getElementById('display-payment').classList.remove('hidden');
-                document.getElementById('display-vencimiento').classList.remove('hidden');
-                document.getElementById('display-creditos').classList.remove('hidden');
-
-                document.getElementById('display-num-ficha').textContent = `Ficha: ${currentUser.id}`;
-                document.getElementById('display-plan').textContent = `Plan: ${currentUser.plan_semanal || 1} x sem`;
-                document.getElementById('display-arancel').textContent = `Cuota: $${(currentUser.monto_abonado || 0).toLocaleString('es-AR')}`;
-
-                const hoyStr = formatLocalDate(new Date());
-                const estaActivo = currentUser.proximo_vencimiento >= hoyStr;
-
-                const statusBadge = document.getElementById('display-payment');
-                if (estaActivo) {
-                    statusBadge.textContent = "ACTIVO";
-                    statusBadge.className = "badge-status";
-                } else {
-                    statusBadge.textContent = "INACTIVO (VENCIDO)";
-                    statusBadge.className = "badge-status inactive";
-                }
-
-                const partsVenc = (currentUser.proximo_vencimiento || '').split('-');
-                const formattedVenc = partsVenc.length === 3 ? `${partsVenc[2]}/${partsVenc[1]}/${partsVenc[0]}` : '--';
-                document.getElementById('display-vencimiento').textContent = `Vence: ${formattedVenc}`;
-
-                const mesVistaActual = formatLocalDate(fechaReferencia).slice(0, 7);
-                if (currentUser.mes_creditos_vigente !== mesVistaActual) {
-                    document.getElementById('display-creditos').textContent = `Clases a recuperar (Mes actual): 0`;
-                } else {
-                    document.getElementById('display-creditos').textContent = `Clases a recuperar: ${currentUser.clases_a_recuperar || 0}`;
-                }
-            }
-
-            await cargarDatosSupabase();
-            renderGrid();
-        }
-
-        async function cargarDatosSupabase() {
-            const { data: alumnos } = await supabaseClient.from('alumnos').select('*');
-            dbAlumnos = alumnos || [];
-
-            const { data: historial_clases, error: errorhistorial_clases } = await supabaseClient.from('historial_clases').select('*');
-            if (errorhistorial_clases) {
-                console.error("Error lectura historial_clases:", errorhistorial_clases.message);
-            }
-            dbhistorial_clases = historial_clases || [];
-
-            const { data: feriados_data, error: errorFeriados } = await supabaseClient.from('feriados').select('*');
-            if (errorFeriados) {
-                console.error("Error lectura feriados:", errorFeriados.message);
-            }
-            dbFeriados = feriados_data || [];
-
-            if (currentUser && currentUser.role === 'admin') {
-                renderListaAlumnos();
-                renderAlertasPagos();
-            }
-        }
-
-        function renderAlertasPagos() {
-            if (currentUser.role !== 'admin') return;
-
-            const hoyStr = formatLocalDate(new Date());
-            const lista = document.getElementById('dropdown-alertas');
-            lista.innerHTML = '';
-
-            const deudores = dbAlumnos.filter(a => a.proximo_vencimiento <= hoyStr);
-            
-            document.getElementById('badge-alertas').textContent = deudores.length;
-
-            if (deudores.length === 0) {
-                lista.innerHTML = '<div class="dropdown-item" style="color:#aaa; text-align:center;">Todos los alumnos al día</div>';
-                return;
-            }
-
-            deudores.forEach(a => {
-                const item = document.createElement('div');
-                item.className = 'dropdown-item';
-                
-                const partsVenc = (a.proximo_vencimiento || '').split('-');
-                const formattedVenc = partsVenc.length === 3 ? `${partsVenc[2]}/${partsVenc[1]}/${partsVenc[0]}` : a.proximo_vencimiento;
-                
-                item.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <strong>Ficha ${a.id} - ${a.nombre}</strong>
-                        <button class="btn btn-warning" style="padding:2px 4px; font-size:0.6rem;" onclick="editarAlumno('${a.id}')">Renovar</button>
-                    </div>
-                    <div style="color:#e74c3c; margin-top:4px;">Venció el: ${formattedVenc}</div>
-                    <div style="color:#8a8a93; font-size:0.7rem;">Cel: ${a.celular || 'S/N'}</div>
-                `;
-                lista.appendChild(item);
-            });
-        }
-
-        async function handleGuardarAlumno(e) {
-            e.preventDefault();
-            const id = document.getElementById('admin-cli-id').value;
-            const nombre = document.getElementById('admin-cli-nombre').value.trim().toLowerCase();
-            const celular = document.getElementById('admin-cli-celular').value.trim();
-            const clave = document.getElementById('admin-cli-pass').value.trim();
-            const fechaPago = document.getElementById('admin-cli-fecha-pago').value;
-
-            const rows = document.querySelectorAll('.horario-row');
-            const turnosFijos = [];
-            rows.forEach(r => {
-                const dia = parseInt(r.querySelector('.sel-dia').value);
-                const hora = r.querySelector('.sel-hora').value;
-                turnosFijos.push({ dia, hora, slotKey: `${hora}-d${dia}` });
-            });
-
-            if (turnosFijos.length === 0) {
-                alert("Debes asignar al menos 1 turno fijo semanal.");
-                return;
-            }
-
-            const fPago = new Date(fechaPago + 'T00:00:00');
-            fPago.setMonth(fPago.getMonth() + 1);
-            const proximoVencimiento = formatLocalDate(fPago);
-
-            const monto = calcularCuotaFormulario();
-            const planSemanal = turnosFijos.length;
-
-            if (id) {
-                const { error } = await supabaseClient
-                    .from('alumnos')
-                    .update({
-                        nombre, celular, clave,
-                        fecha_pago: fechaPago,
-                        proximo_vencimiento: proximoVencimiento,
-                        monto_abonado: monto,
-                        plan_semanal: planSemanal,
-                        horarios_clases: turnosFijos,
-                        estado: 'activo'
-                    })
-                    .eq('id', id);
-
-                if (error) alert("Error al actualizar: " + error.message);
-                else alert("Alumno actualizado con éxito.");
-            } else {
-                const { error } = await supabaseClient
-                    .from('alumnos')
-                    .insert([{
-                        nombre, celular, clave,
-                        fecha_pago: fechaPago,
-                        proximo_vencimiento: proximoVencimiento,
-                        monto_abonado: monto,
-                        plan_semanal: planSemanal,
-                        horarios_clases: turnosFijos,
-                        clases_a_recuperar: 0,
-                        mes_creditos_vigente: fechaPago.slice(0, 7),
-                        estado: 'activo'
-                    }]);
-
-                if (error) alert("Error al registrar: " + error.message);
-                else alert("Alumno registrado en Supabase.");
-            }
-
-            resetFormularioAlumno();
-            await cargarDatosSupabase();
-            renderGrid();
-        }
-
-        function editarAlumno(id) {
-            const alumno = dbAlumnos.find(a => a.id == id);
-            if (!alumno) return;
-            
-            document.getElementById('dropdown-alertas').classList.add('hidden');
-
-            document.getElementById('form-alta-title').textContent = `Editar Alumno (Ficha ${alumno.id})`;
-            document.getElementById('admin-cli-id').value = alumno.id;
-            document.getElementById('admin-cli-nombre').value = alumno.nombre;
-            document.getElementById('admin-cli-celular').value = alumno.celular || '';
-            document.getElementById('admin-cli-pass').value = alumno.clave;
-            document.getElementById('admin-cli-fecha-pago').value = alumno.fecha_pago || '';
-
-            const container = document.getElementById('horarios-fijos-container');
-            container.innerHTML = '';
-            if (alumno.horarios_clases && alumno.horarios_clases.length > 0) {
-                alumno.horarios_clases.forEach(tf => addHorarioSelector(tf.dia, tf.hora));
-            } else {
-                addHorarioSelector();
-            }
-
-            calcularCuotaFormulario();
-
-            document.getElementById('btn-guardar-alumno').textContent = "Guardar Cambios";
-            document.getElementById('btn-cancelar-edicion').classList.remove('hidden');
-        }
-
-        function resetFormularioAlumno() {
-            document.getElementById('form-alta-title').textContent = "Alta de Alumno";
-            document.getElementById('admin-cli-id').value = '';
-            document.getElementById('form-alta-alumno').reset();
-            document.getElementById('horarios-fijos-container').innerHTML = '';
-            addHorarioSelector();
-            calcularCuotaFormulario();
-            document.getElementById('btn-guardar-alumno').textContent = "Registrar Alumno";
-            document.getElementById('btn-cancelar-edicion').classList.add('hidden');
-        }
-
-        function renderListaAlumnos() {
-            const container = document.getElementById('lista-alumnos');
-            container.innerHTML = '';
-
-            const hoyStr = formatLocalDate(new Date());
-            const filtro = document.getElementById('search-alumnos').value.toLowerCase();
-
-            const alumnosFiltrados = dbAlumnos.filter(a => 
-                a.id.toString().includes(filtro) || (a.nombre && a.nombre.toLowerCase().includes(filtro))
-            );
-
-            alumnosFiltrados.forEach(a => {
-                const card = document.createElement('div');
-                card.className = 'alumno-card';
-                
-                let resumenFijos = a.horarios_clases ? a.horarios_clases.map(tf => `${DIAS_NOMBRES[tf.dia].slice(0,3)} ${tf.hora}`).join(', ') : 'Sin turnos';
-                const esPagoVigente = a.proximo_vencimiento > hoyStr;
-
-                card.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <strong>Ficha N° ${a.id} - ${a.nombre}</strong>
-                        <span class="badge-status ${esPagoVigente ? '' : 'inactive'}" style="font-size:0.65rem;">
-                            ${esPagoVigente ? 'ACTIVO' : 'INACTIVO'}
-                        </span>
-                    </div>
-                    <span style="color:#aaa;">Cel: ${a.celular || 'S/N'} | Clave: ${a.clave}</span><br>
-                    <span style="color:#aaa;">Fijos: ${resumenFijos}</span><br>
-                    <span style="color:#8a8a93;">Vence: ${a.proximo_vencimiento || 'S/D'}</span> | 
-                    <span style="color:#f39c12; font-weight:bold;">Recuperos: ${a.clases_a_recuperar || 0}</span>
-                    <div class="alumno-actions">
-                        <button class="btn btn-warning" style="padding:2px 6px; font-size:0.65rem;" onclick="editarAlumno('${a.id}')">Editar / Renovar</button>
-                        <button class="btn btn-danger" style="padding:2px 6px; font-size:0.65rem;" onclick="darDeBajaAlumno('${a.id}')">Baja</button>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-        }
-
-        async function darDeBajaAlumno(id) {
-            if (!confirm("¿Dar de baja a este alumno?")) return;
-            await supabaseClient.from('alumnos').delete().eq('id', id);
-            await cargarDatosSupabase();
-            renderGrid();
-        }
-
-        function cambiarSemana(dias) {
-            fechaReferencia.setDate(fechaReferencia.getDate() + dias);
-            renderGrid();
-        }
-
-        function renderGrid() {
-            const gridBody = document.getElementById('grid-body');
-            gridBody.innerHTML = '';
-
-            const lunesActual = getLunesDeSemana(fechaReferencia);
-            const mesNombre = MESES_ABREV[lunesActual.getMonth()];
-            const anio = lunesActual.getFullYear();
-
-            document.getElementById('semana-label').textContent = `${mesNombre} ${anio}`;
-
-            if (currentUser && currentUser.role === 'admin') {
-                const semanaKey = `nota_${formatLocalDate(lunesActual)}`;
-                document.getElementById('semana-nota-input').value = localStorage.getItem(semanaKey) || '';
-            }
-
-            let semanaEstaAbonada = true;
-            if (currentUser && currentUser.role === 'alumno') {
-                const inicioSemanaStr = formatLocalDate(lunesActual);
-                const fPago = currentUser.fecha_pago || '1970-01-01';
-                const fVenc = currentUser.proximo_vencimiento || '1970-01-01';
-
-                if (inicioSemanaStr < fPago || inicioSemanaStr >= fVenc) {
-                    semanaEstaAbonada = false;
-                }
-            }
-
-            const bannerBlock = document.getElementById('banner-bloqueo-mes');
-            if (!semanaEstaAbonada && currentUser.role === 'alumno') {
-                bannerBlock.classList.remove('hidden');
-            } else {
-                bannerBlock.classList.add('hidden');
-            }
-
-            for (let i = 0; i < 6; i++) {
-                const d = new Date(lunesActual);
-                d.setDate(d.getDate() + i);
-                document.getElementById(`h-${i}`).textContent = `${d.getDate()}/${d.getMonth()+1}`;
-            }
-
-            HORARIOS_LV.forEach(hora => {
-                const row = document.createElement('div');
-                row.className = 'grid-row';
-
-                const timeCell = document.createElement('div');
-                timeCell.className = 'time-cell';
-                timeCell.textContent = hora;
-                row.appendChild(timeCell);
-
-                for (let dia = 0; dia < 6; dia++) {
-                    const slotCell = document.createElement('div');
-                    slotCell.className = 'slot-cell';
-
-                    const fechaCelda = new Date(lunesActual);
-                    fechaCelda.setDate(fechaCelda.getDate() + dia);
-                    const fechaIso = formatLocalDate(fechaCelda);
-
-                    const datosFeriado = dbFeriados.find(f => f.fecha && f.fecha.trim().substring(0, 10) === fechaIso);
-
-                    if (datosFeriado) {
-                        slotCell.classList.add('slot-feriado');
-                        
-                        const lbl = document.createElement('div');
-                        lbl.style.cssText = "color:#e74c3c; font-weight:bold; font-size:0.75rem; text-align:center; padding-top: 15px;";
-                        lbl.textContent = "FERIADO";
-                        slotCell.appendChild(lbl);
-                        
-                        if (hora === "08:00" || (dia === 5 && hora === "09:00")) {
-                            const obsLbl = document.createElement('div');
-                            obsLbl.style.cssText = "color:#555; font-size:0.6rem; text-align:center; padding: 2px; line-height:1.2;";
-                            obsLbl.textContent = datosFeriado.obs || '';
-                            slotCell.appendChild(obsLbl);
-                        }
-                        
-                        row.appendChild(slotCell);
-                        continue;
-                    }
-
-                    if (dia === 5 && !HORARIOS_SAB.includes(hora)) {
-                        slotCell.classList.add('disabled-slot');
-                        row.appendChild(slotCell);
-                        continue;
-                    }
-
-                    const slotKey = `${hora}-d${dia}`;
-                    const ocupantes = getOcupantesSlot(slotKey, fechaIso, hora);
-                    
-                    const disponibles = Math.max(0, CAMAS_MAX - ocupantes.length);
-
-                    const info = document.createElement('div');
-                    info.className = 'slot-info';
-                    info.textContent = `${disponibles} de ${CAMAS_MAX} Libres`;
-                    slotCell.appendChild(info);
-
-                    ocupantes.forEach(cli => {
-                        const esMio = currentUser && cli.id === currentUser.id;
-                        const esRecuperada = cli.tipoTurno === 'recuperada';
-
-                        const ficha = document.createElement('div');
-                        ficha.className = `ficha ${esMio ? 'propia' : ''} ${esRecuperada ? 'recuperada' : ''}`;
-                        ficha.innerHTML = `<span>${currentUser.role === 'admin' ? 'Ficha ' + cli.id + ' ' + cli.nombre : (esMio ? 'Tu Clase' : 'Ocupado')} ${esRecuperada ? '(Rec)' : ''}</span>`;
-                        
-                        if (currentUser.role === 'admin' || (esMio && semanaEstaAbonada)) {
-                            ficha.onclick = () => cancelarClaseModal(cli, fechaIso, slotKey, esRecuperada, hora, dia);
-                        }
-                        slotCell.appendChild(ficha);
-                    });
-
-                    if (currentUser && currentUser.role === 'alumno' && disponibles > 0 && semanaEstaAbonada) {
-                        const estaAnotado = ocupantes.some(a => a.id === currentUser.id);
-                        const mesFechaCelda = fechaIso.slice(0, 7);
-                        const creditosMes = currentUser.mes_creditos_vigente === mesFechaCelda ? (currentUser.clases_a_recuperar || 0) : 0;
-
-                        if (!estaAnotado && creditosMes > 0) {
-                            const btnReserva = document.createElement('button');
-                            btnReserva.className = 'slot-reserva-btn';
-                            btnReserva.textContent = '+ Agendar';
-                            btnReserva.onclick = () => agendarRecupero(currentUser.id, fechaIso, slotKey, hora, dia);
-                            slotCell.appendChild(btnReserva);
-                        }
-                    }
-
-                    if (currentUser && currentUser.role === 'admin' && disponibles > 0) {
-                        const btnAdminAssign = document.createElement('button');
-                        btnAdminAssign.className = 'slot-admin-btn';
-                        btnAdminAssign.textContent = '+ Asignar';
-                        btnAdminAssign.onclick = () => asignarAlumnoPorAdmin(fechaIso, slotKey, disponibles, hora, dia);
-                        slotCell.appendChild(btnAdminAssign);
-                    }
-
-                    row.appendChild(slotCell);
-                }
-
-                gridBody.appendChild(row);
-            });
-        }
-
-        function getOcupantesSlot(slotKey, fechaIso, hora) {
-            let ocupantes = [];
-            const horaFormatted = hora.length === 5 ? `${hora}:00` : hora;
-
-            dbAlumnos.forEach(cli => {
-                const estaEnPeriodo = cli.fecha_pago && cli.proximo_vencimiento && fechaIso >= cli.fecha_pago && fechaIso < cli.proximo_vencimiento;
-                const tieneFijo = cli.horarios_clases && cli.horarios_clases.some(tf => tf.slotKey === slotKey);
-                
-                const cancelo = dbhistorial_clases.some(a => 
-                    a.alumno_id === cli.id && 
-                    a.fecha_clase.startsWith(fechaIso) && 
-                    a.hora_inicio === horaFormatted && 
-                    a.estado === 'cancelada'
-                );
-
-                if (tieneFijo && estaEnPeriodo && !cancelo) {
-                    ocupantes.push({ ...cli, tipoTurno: 'fijo' });
-                }
-            });
-
-            dbhistorial_clases.filter(a => 
-                a.fecha_clase.startsWith(fechaIso) && 
-                a.hora_inicio === horaFormatted && 
-                a.tipo_clase === 'recupero' && 
-                a.estado === 'asistida'
-            ).forEach(rec => {
-                const cli = dbAlumnos.find(a => a.id === rec.alumno_id);
-                if (cli && !ocupantes.some(o => o.id === cli.id)) {
-                    ocupantes.push({ ...cli, tipoTurno: 'recuperada', asistenciaId: rec.id });
-                }
-            });
-
-            return ocupantes;
-        }
-
-        async function cancelarClaseModal(alumno, fechaIso, slotKey, esRecuperada, hora, dia) {
-            const [horaTurno, minTurno] = slotKey.split('-')[0].split(':');
-            const [yearTurno, monthTurno, dayTurno] = fechaIso.split('-');
-            const turnoDate = new Date(yearTurno, monthTurno - 1, dayTurno, horaTurno, minTurno);
-            const now = new Date();
-
-            if (turnoDate < now) {
-                alert("Operación denegada: No es posible cancelar o modificar una clase ya transcurrida.");
-                return;
-            }
-
-            const diffMs = turnoDate - now;
-            if (currentUser.role === 'alumno' && diffMs < 7200000) {
-                alert("Operación denegada: La cancelación debe realizarse con un mínimo de 2 horas de antelación.");
-                return;
-            }
-
-            const mesFecha = fechaIso.slice(0, 7);
-            const horaFormatted = hora.length === 5 ? `${hora}:00` : hora;
-
-            if (esRecuperada) {
-                if (!confirm(`¿Cancelar la clase recuperada/agendada de ${alumno.nombre}?`)) return;
-
-                await supabaseClient.from('historial_clases')
-                    .delete()
-                    .eq('alumno_id', alumno.id)
-                    .eq('hora_inicio', horaFormatted)
-                    .gte('fecha_clase', `${fechaIso}T00:00:00`)
-                    .lte('fecha_clase', `${fechaIso}T23:59:59`);
-
-                let nuevosCreditos = (alumno.clases_a_recuperar || 0);
-                if (alumno.mes_creditos_vigente === mesFecha) {
-                    nuevosCreditos += 1;
-                } else {
-                    nuevosCreditos = 1;
-                }
-
-                await supabaseClient.from('alumnos').update({ 
-                    clases_a_recuperar: nuevosCreditos,
-                    mes_creditos_vigente: mesFecha
-                }).eq('id', alumno.id);
-
-                if (currentUser.id === alumno.id) {
-                    currentUser.clases_a_recuperar = nuevosCreditos;
-                    currentUser.mes_creditos_vigente = mesFecha;
-                }
-            } else {
-                if (!confirm(`¿Cancelar la clase del día ${fechaIso}? Obtienes 1 crédito recuperable para este mes.`)) return;
-
-                await supabaseClient.from('historial_clases').insert([{
-                    alumno_id: alumno.id,
-                    fecha_clase: `${fechaIso} ${horaFormatted}`,
-                    dia_semana: DIAS_NOMBRES[dia],
-                    hora_inicio: horaFormatted,
-                    tipo_clase: 'regular',
-                    estado: 'cancelada'
-                }]);
-
-                let nuevosCreditos = (alumno.clases_a_recuperar || 0);
-                if (alumno.mes_creditos_vigente === mesFecha) {
-                    nuevosCreditos += 1;
-                } else {
-                    nuevosCreditos = 1;
-                }
-
-                await supabaseClient.from('alumnos').update({ 
-                    clases_a_recuperar: nuevosCreditos,
-                    mes_creditos_vigente: mesFecha
-                }).eq('id', alumno.id);
-
-                if (currentUser.id === alumno.id) {
-                    currentUser.clases_a_recuperar = nuevosCreditos;
-                    currentUser.mes_creditos_vigente = mesFecha;
-                }
-            }
-
-            await setupInterface();
-        }
-
-        async function agendarRecupero(alumnoId, fechaIso, slotKey, hora, dia) {
-            const [horaTurno, minTurno] = slotKey.split('-')[0].split(':');
-            const [yearTurno, monthTurno, dayTurno] = fechaIso.split('-');
-            const turnoDate = new Date(yearTurno, monthTurno - 1, dayTurno, horaTurno, minTurno);
-            const now = new Date();
-
-            if (turnoDate < now) {
-                alert("Operación denegada: No es posible agendar turnos en horarios ya transcurridos.");
-                return;
-            }
-
-            if (!confirm(`¿Agendar clase de recupero para el día ${fechaIso} a las ${slotKey.split('-')[0]}?`)) return;
-
-            const horaFormatted = hora.length === 5 ? `${hora}:00` : hora;
-
-            await supabaseClient.from('historial_clases').insert([{
-                alumno_id: alumnoId,
-                fecha_clase: `${fechaIso} ${horaFormatted}`,
-                dia_semana: DIAS_NOMBRES[dia],
-                hora_inicio: horaFormatted,
-                tipo_clase: 'recupero',
-                estado: 'asistida'
-            }]);
-
-            const alumno = dbAlumnos.find(a => a.id === alumnoId);
-            const nuevosCreditos = Math.max((alumno.clases_a_recuperar || 0) - 1, 0);
-            
-            await supabaseClient.from('alumnos').update({ clases_a_recuperar: nuevosCreditos }).eq('id', alumnoId);
-
-            if (currentUser.id === alumnoId) currentUser.clases_a_recuperar = nuevosCreditos;
-
-            await setupInterface();
-        }
-
-        async function asignarAlumnoPorAdmin(fechaIso, slotKey, disponibles, hora, dia) {
-            if (disponibles <= 0) {
-                alert("Atención: Este turno ya alcanzó el límite de 6 camas. No se pueden anotar más alumnos.");
-                return;
-            }
-
-            const inputFicha = prompt("Ingresa el N° de Ficha / ID del alumno a agendar:");
-            if (!inputFicha) return;
-
-            const alumno = dbAlumnos.find(a => a.id == inputFicha.trim());
-            if (!alumno) {
-                alert("Alumno no encontrado con esa ficha.");
-                return;
-            }
-
-            await agendarRecupero(alumno.id, fechaIso, slotKey, hora, dia);
-        }
-
-        async function toggleFeriado(diaIndex) {
-            const lunesActual = getLunesDeSemana(fechaReferencia);
-            const d = new Date(lunesActual);
-            d.setDate(d.getDate() + diaIndex);
-            
-            const fechaIso = formatLocalDate(d);
-
-            const feriadoExistente = dbFeriados.find(f => f.fecha && f.fecha.trim().substring(0, 10) === fechaIso);
-
-            if (feriadoExistente) {
-                await supabaseClient.from('feriados').delete().eq('fecha', feriadoExistente.fecha);
-            } else {
-                const obs = prompt("Observación del feriado (opcional):") || "";
-                await supabaseClient.from('feriados').insert([{ fecha: fechaIso, obs: obs }]);
-            }
-            
-            await cargarDatosSupabase();
-            renderGrid();
-        }
-
-        function guardarNotaSemana() {
-            const lunesActual = getLunesDeSemana(fechaReferencia);
-            const semanaKey = `nota_${formatLocalDate(lunesActual)}`;
-            const val = document.getElementById('semana-nota-input').value;
-            localStorage.setItem(semanaKey, val);
-            alert("Nota guardada localmente.");
-        }
-    </script>
+    <button onclick="agendarRecupero()">Asignar recupero</button>
+    <div id="resultadoRecupero"></div>
+</section>
+
+<section>
+    <h2>5. Historial guardado</h2>
+    <button onclick="cargarHistorial()">Actualizar historial</button>
+    <div id="historial"></div>
+</section>
+
+<section>
+    <h2>6. Datos de Supabase</h2>
+    <pre id="debug">Sin datos.</pre>
+</section>
+
+<script>
+const SUPABASE_URL = 'https://bgrhwfutbmoktvdziamk.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJncmh3ZnV0Ym1va3R2ZHppYW1rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3ODU4NTYsImV4cCI6MjEwNDM2MTg1Nn0.1EjgnUOR3IwUmf_veno-oQZ4pEHKhbKElW0-AId2VZg';
+
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let alumnos = [];
+
+const HORARIOS_LV = ["08:00","09:00","10:00","11:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00"];
+const HORARIOS_SAB = ["09:00","10:00","11:00"];
+const DIAS = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+
+function hoyISO() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const day = String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${day}`;
+}
+
+function fechaBonita(iso) {
+    if (!iso) return "";
+    const [y,m,d] = iso.split("-");
+    return `${d}/${m}/${y}`;
+}
+
+function errorTexto(error) {
+    if (!error) return "";
+    return [
+        `code: ${error.code || ""}`,
+        `message: ${error.message || ""}`,
+        `details: ${error.details || ""}`,
+        `hint: ${error.hint || ""}`
+    ].join("\n");
+}
+
+function mostrarResultado(id, ok, texto) {
+    const el = document.getElementById(id);
+    el.className = ok ? "ok" : "error";
+    el.textContent = texto;
+}
+
+async function iniciar() {
+    document.getElementById("fechaCancelacion").value = hoyISO();
+    document.getElementById("fechaRecupero").value = hoyISO();
+
+    actualizarDia("fechaCancelacion","diaCancelacion");
+    actualizarDia("fechaRecupero","diaRecupero");
+
+    document.getElementById("fechaCancelacion").addEventListener("change", () => {
+        actualizarDia("fechaCancelacion","diaCancelacion");
+    });
+    document.getElementById("fechaRecupero").addEventListener("change", () => {
+        actualizarDia("fechaRecupero","diaRecupero");
+    });
+
+    llenarHoras("horaCancelacion", HORARIOS_LV);
+    llenarHoras("horaRecupero", HORARIOS_LV);
+
+    await probarConexion();
+    await cargarAlumnos();
+}
+
+function actualizarDia(fechaId, diaId) {
+    const fecha = document.getElementById(fechaId).value;
+    if (!fecha) return;
+    const [y,m,d] = fecha.split("-").map(Number);
+    document.getElementById(diaId).value = DIAS[new Date(y,m-1,d).getDay()];
+}
+
+function llenarHoras(id, horas) {
+    const select = document.getElementById(id);
+    select.innerHTML = "";
+    horas.forEach(h => {
+        const option = document.createElement("option");
+        option.value = h;
+        option.textContent = h;
+        select.appendChild(option);
+    });
+}
+
+async function probarConexion() {
+    const { data, error } = await supabaseClient
+        .from("alumnos")
+        .select("id")
+        .limit(1);
+
+    if (error) {
+        document.getElementById("conexion").innerHTML =
+            `<span class="error">ERROR DE CONEXIÓN/CONSULTA\n${escapeHtml(errorTexto(error))}</span>`;
+        return;
+    }
+
+    document.getElementById("conexion").innerHTML =
+        `<span class="ok">OK — Supabase responde correctamente.</span>`;
+}
+
+async function cargarAlumnos() {
+    const { data, error } = await supabaseClient
+        .from("alumnos")
+        .select("*")
+        .order("id");
+
+    if (error) {
+        document.getElementById("datosAlumno").innerHTML =
+            `<span class="error">${escapeHtml(errorTexto(error))}</span>`;
+        return;
+    }
+
+    alumnos = data || [];
+
+    const select = document.getElementById("alumno");
+    select.innerHTML = "";
+
+    alumnos.forEach(a => {
+        const op = document.createElement("option");
+        op.value = a.id;
+        op.textContent = `${a.id} — ${a.nombre}`;
+        select.appendChild(op);
+    });
+
+    select.addEventListener("change", mostrarAlumno);
+    mostrarAlumno();
+    await cargarHistorial();
+}
+
+function obtenerAlumno() {
+    const id = Number(document.getElementById("alumno").value);
+    return alumnos.find(a => Number(a.id) === id);
+}
+
+function mostrarAlumno() {
+    const a = obtenerAlumno();
+    if (!a) return;
+
+    document.getElementById("datosAlumno").innerHTML = `
+        <b>ID:</b> ${a.id}<br>
+        <b>Nombre:</b> ${escapeHtml(a.nombre || "")}<br>
+        <b>Estado:</b> ${escapeHtml(a.estado || "")}<br>
+        <b>Plan semanal:</b> ${a.plan_semanal ?? ""}<br>
+        <b>Clases a recuperar:</b> ${a.clases_a_recuperar ?? 0}<br>
+        <b>Mes créditos vigente:</b> ${escapeHtml(a.mes_creditos_vigente || "")}<br>
+        <b>Horarios recurrentes:</b><br>
+        <pre>${escapeHtml(JSON.stringify(a.horarios_clases, null, 2))}</pre>
+    `;
+}
+
+async function cancelarClase() {
+    const alumno = obtenerAlumno();
+    const fecha = document.getElementById("fechaCancelacion").value;
+    const hora = document.getElementById("horaCancelacion").value;
+
+    if (!alumno || !fecha || !hora) {
+        mostrarResultado("resultadoCancelacion", false, "Faltan datos.");
+        return;
+    }
+
+    const [y,m,d] = fecha.split("-").map(Number);
+    const diaNombre = DIAS[new Date(y,m-1,d).getDay()];
+    const mesFecha = fecha.slice(0,7);
+
+    const registro = {
+        alumno_id: alumno.id,
+        fecha_clase: `${fecha} ${hora}:00`,
+        dia_semana: diaNombre,
+        hora_inicio: `${hora}:00`,
+        tipo_clase: "regular",
+        estado: "cancelada",
+        created_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabaseClient
+        .from("historial_clases")
+        .insert([registro])
+        .select();
+
+    if (error) {
+        mostrarResultado("resultadoCancelacion", false,
+            "FALLÓ INSERT DE CANCELACIÓN\n" + errorTexto(error));
+        return;
+    }
+
+    let nuevosCreditos = Number(alumno.clases_a_recuperar || 0);
+    if (alumno.mes_creditos_vigente === mesFecha) {
+        nuevosCreditos += 1;
+    } else {
+        nuevosCreditos = 1;
+    }
+
+    const { error: errorAlumno } = await supabaseClient
+        .from("alumnos")
+        .update({
+            clases_a_recuperar: nuevosCreditos,
+            mes_creditos_vigente: mesFecha
+        })
+        .eq("id", alumno.id);
+
+    if (errorAlumno) {
+        mostrarResultado("resultadoCancelacion", false,
+            "La cancelación se guardó, pero falló la actualización de créditos.\n" +
+            errorTexto(errorAlumno));
+        await cargarAlumnos();
+        return;
+    }
+
+    mostrarResultado("resultadoCancelacion", true,
+        `OK. Cancelación guardada.\nID historial: ${data?.[0]?.id ?? "(sin retorno)"}\n` +
+        `Clases a recuperar: ${nuevosCreditos}`);
+
+    await cargarAlumnos();
+    await cargarHistorial();
+}
+
+async function agendarRecupero() {
+    const alumno = obtenerAlumno();
+    const fecha = document.getElementById("fechaRecupero").value;
+    const hora = document.getElementById("horaRecupero").value;
+
+    if (!alumno || !fecha || !hora) {
+        mostrarResultado("resultadoRecupero", false, "Faltan datos.");
+        return;
+    }
+
+    const creditos = Number(alumno.clases_a_recuperar || 0);
+    if (creditos <= 0) {
+        mostrarResultado("resultadoRecupero", false,
+            "El alumno no tiene clases_a_recuperar disponibles.");
+        return;
+    }
+
+    const [y,m,d] = fecha.split("-").map(Number);
+    const diaNombre = DIAS[new Date(y,m-1,d).getDay()];
+
+    const registro = {
+        alumno_id: alumno.id,
+        fecha_clase: `${fecha} ${hora}:00`,
+        dia_semana: diaNombre,
+        hora_inicio: `${hora}:00`,
+        tipo_clase: "recupero",
+        estado: "asistida",
+        created_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabaseClient
+        .from("historial_clases")
+        .insert([registro])
+        .select();
+
+    if (error) {
+        mostrarResultado("resultadoRecupero", false,
+            "FALLÓ INSERT DE RECUPERO\n" + errorTexto(error));
+        return;
+    }
+
+    const nuevosCreditos = Math.max(creditos - 1, 0);
+
+    const { error: errorAlumno } = await supabaseClient
+        .from("alumnos")
+        .update({
+            clases_a_recuperar: nuevosCreditos
+        })
+        .eq("id", alumno.id);
+
+    if (errorAlumno) {
+        mostrarResultado("resultadoRecupero", false,
+            "El recupero se guardó, pero falló la actualización de créditos.\n" +
+            errorTexto(errorAlumno));
+        await cargarAlumnos();
+        return;
+    }
+
+    mostrarResultado("resultadoRecupero", true,
+        `OK. Recupero guardado.\nID historial: ${data?.[0]?.id ?? "(sin retorno)"}\n` +
+        `Clases a recuperar: ${nuevosCreditos}`);
+
+    await cargarAlumnos();
+    await cargarHistorial();
+}
+
+async function cargarHistorial() {
+    const alumno = obtenerAlumno();
+    if (!alumno) return;
+
+    const { data, error } = await supabaseClient
+        .from("historial_clases")
+        .select("*")
+        .eq("alumno_id", alumno.id)
+        .order("fecha_clase", { ascending: false });
+
+    if (error) {
+        document.getElementById("historial").innerHTML =
+            `<span class="error">${escapeHtml(errorTexto(error))}</span>`;
+        return;
+    }
+
+    if (!data.length) {
+        document.getElementById("historial").innerHTML = "No hay registros.";
+        return;
+    }
+
+    let html = `<table>
+        <tr>
+            <th>ID</th>
+            <th>Fecha clase</th>
+            <th>Día</th>
+            <th>Hora</th>
+            <th>Tipo</th>
+            <th>Estado</th>
+            <th>Creado</th>
+        </tr>`;
+
+    data.forEach(r => {
+        html += `<tr>
+            <td>${r.id ?? ""}</td>
+            <td>${r.fecha_clase ?? ""}</td>
+            <td>${r.dia_semana ?? ""}</td>
+            <td>${r.hora_inicio ?? ""}</td>
+            <td>${r.tipo_clase ?? ""}</td>
+            <td>${r.estado ?? ""}</td>
+            <td>${r.created_at ?? ""}</td>
+        </tr>`;
+    });
+
+    html += "</table>";
+    document.getElementById("historial").innerHTML = html;
+
+    document.getElementById("debug").textContent = JSON.stringify(data, null, 2);
+}
+
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+}
+
+document.getElementById("alumno").addEventListener("change", () => {
+    mostrarAlumno();
+    cargarHistorial();
+});
+
+iniciar();
+</script>
 </body>
 </html>
