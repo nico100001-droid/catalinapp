@@ -1164,6 +1164,63 @@
             localStorage.setItem(semanaKey, val);
             alert("Nota guardada localmente.");
         }
+
+        async function verificarYRegistrarAsistenciasPasadas() {
+    const ahora = new Date();
+    const fechaIso = formatLocalDate(ahora);
+    const horaActual = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}:00`;
+    const diaIndex = ahora.getDay();
+    const diasNombres = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const diaTexto = diasNombres[diaIndex];
+
+    // Cancelar si hoy es feriado
+    const esFeriado = dbFeriados.some(f => f.fecha && f.fecha.trim().substring(0, 10) === fechaIso);
+    if (esFeriado) return;
+
+    const nuevasAsistencias = [];
+
+    dbAlumnos.forEach(alumno => {
+        if (!alumno.fecha_pago || !alumno.proximo_vencimiento) return;
+        if (fechaIso < alumno.fecha_pago || fechaIso > alumno.proximo_vencimiento) return;
+
+        if (alumno.horarios_clases && Array.isArray(alumno.horarios_clases)) {
+            alumno.horarios_clases.forEach(tf => {
+                const [diaSlot, horaSlot] = tf.slotKey.split('-');
+                if (parseInt(diaSlot) === diaIndex) {
+                    const horaFormatted = horaSlot.length === 5 ? `${horaSlot}:00` : horaSlot;
+
+                    if (horaFormatted <= horaActual) {
+                        const existeRegistro = dbhistorial_clases.some(hc => 
+                            hc.alumno_id === alumno.id &&
+                            hc.fecha_clase.startsWith(fechaIso) &&
+                            hc.hora_inicio === horaFormatted
+                        );
+
+                        if (!existeRegistro) {
+                            nuevasAsistencias.push({
+                                alumno_id: alumno.id,
+                                fecha_clase: `${fechaIso} ${horaFormatted}`,
+                                dia_semana: diaTexto,
+                                hora_inicio: horaFormatted,
+                                tipo_clase: 'regular',
+                                estado: 'asistida'
+                            });
+                        }
+                    }
+                }
+            });
+        }
+    });
+
+    if (nuevasAsistencias.length > 0) {
+        const { error } = await supabaseClient.from('historial_clases').insert(nuevasAsistencias);
+        if (!error) {
+            const { data: actualizado } = await supabaseClient.from('historial_clases').select('*');
+            dbhistorial_clases = actualizado || [];
+        }
+    }
+}
+        
     </script>
 </body>
 </html>
