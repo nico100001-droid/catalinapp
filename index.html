@@ -638,7 +638,6 @@
             }
             dbFeriados = feriados_data || [];
 
-            // Invocación de la verificación e inserción automática de asistencias pasadas
             await verificarYRegistrarAsistenciasPasadas();
 
             if (currentUser && currentUser.role === 'admin') {
@@ -937,10 +936,10 @@
 
                         const ficha = document.createElement('div');
                         ficha.className = `ficha ${esMio ? 'propia' : ''} ${esRecuperada ? 'recuperada' : ''}`;
-const textoClase = currentUser.role === 'admin' 
-    ? `Ficha ${cli.id} ${cli.nombre} ${esRecuperada ? '(Rec)' : ''}`
-    : (esMio ? `Tu Clase ${esRecuperada ? '(Rec)' : ''}` : 'Ocupado');
-ficha.innerHTML = `<span>${textoClase}</span>`;
+                        const textoClase = currentUser.role === 'admin' 
+                            ? `Ficha ${cli.id} ${cli.nombre} ${esRecuperada ? '(Rec)' : ''}`
+                            : (esMio ? `Tu Clase ${esRecuperada ? '(Rec)' : ''}` : 'Ocupado');
+                        ficha.innerHTML = `<span>${textoClase}</span>`;
                         
                         if (currentUser.role === 'admin' || (esMio && semanaEstaAbonada)) {
                             ficha.onclick = () => cancelarClaseModal(cli, fechaIso, slotKey, esRecuperada, hora, dia);
@@ -950,26 +949,13 @@ ficha.innerHTML = `<span>${textoClase}</span>`;
 
                     if (currentUser && currentUser.role === 'alumno' && disponibles > 0 && semanaEstaAbonada) {
                         const estaAnotado = ocupantes.some(a => a.id === currentUser.id);
-                        const mesFechaCelda = fechaIso.slice(0, 7);
-const fPago = currentUser.fecha_pago;
-const fVenc = currentUser.proximo_vencimiento;
-const saldoCreditos = currentUser.clases_a_recuperar || 0;
-const estaDentroDelCicloActivo = fPago && fVenc && (fechaIso >= fPago && fechaIso <= fVenc);
-const tieneCreditoHabilitado = saldoCreditos > 0 && estaDentroDelCicloActivo;
-                        const btnAgendar = slotElement.querySelector('.btn-agendar-recupero'); // O document.createElement('button')
+                        const fPago = currentUser.fecha_pago;
+                        const fVenc = currentUser.proximo_vencimiento;
+                        const saldoCreditos = currentUser.clases_a_recuperar || 0;
+                        const estaDentroDelCicloActivo = fPago && fVenc && (fechaIso >= fPago && fechaIso <= fVenc);
+                        const tieneCreditoHabilitado = saldoCreditos > 0 && estaDentroDelCicloActivo;
 
-    if (tieneCreditoHabilitado && esSlotLibre) {
-        btnAgendar.disabled = false;
-        btnAgendar.classList.remove('hidden');
-        btnAgendar.onclick = () => ejecutarReservaRecupero(fechaIso, hora);
-    } else {
-        // Si no tiene créditos o la fecha está fuera de su ciclo abonado
-        btnAgendar.disabled = true;
-        btnAgendar.classList.add('hidden'); // Opcional: ocultar si no aplica
-    }
-}
-
-                        if (!estaAnotado && creditosMes > 0) {
+                        if (!estaAnotado && tieneCreditoHabilitado) {
                             const btnReserva = document.createElement('button');
                             btnReserva.className = 'slot-reserva-btn';
                             btnReserva.textContent = '+ Agendar';
@@ -1192,16 +1178,13 @@ const tieneCreditoHabilitado = saldoCreditos > 0 && estaDentroDelCicloActivo;
             const fechaIso = formatLocalDate(ahora);
             const jsDay = ahora.getDay();
             
-            // Si es Domingo (0), detiene la ejecución
             if (jsDay === 0) return;
 
-            // Mapeo de día JS (1=Lunes .. 6=Sábado) a índice de la app (0=Lunes .. 5=Sábado)
             const diaIndex = jsDay - 1;
             const horaActual = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}:00`;
             const diasNombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
             const diaTexto = diasNombres[diaIndex];
 
-            // Cancelar si hoy es feriado
             const esFeriado = dbFeriados.some(f => f.fecha && f.fecha.trim().substring(0, 10) === fechaIso);
             if (esFeriado) return;
 
@@ -1250,7 +1233,6 @@ const tieneCreditoHabilitado = saldoCreditos > 0 && estaDentroDelCicloActivo;
                 }
             }
         }
-        
     </script>
 </body>
 </html>
